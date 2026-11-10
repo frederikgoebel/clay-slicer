@@ -1,0 +1,114 @@
+.btn {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 7px 12px;
+  font: inherit;
+  cursor: pointer;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a0f0a;
+  font-weight: 600;
+}
+.primary:hover:not(:disabled) {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+}
+.small {
+  padding: 3px 10px;
+  min-height: 28px;
+}
+
+.section {
+  border-bottom: 1px solid var(--line);
+}
+.section > summary {
+  padding: 11px 16px;
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+}
+.section > summary::-webkit-details-marker {
+  display: none;
+}
+.section > summary::after {
+  content: '+';
+  color: var(--dim);
+}
+.section[open] > summary::after {
+  content: '–';
+}
+.sectionBody {
+  padding: 2px 16px 14px;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0 2px;
+}
+.field label {
+  color: var(--dim);
+}
+
+.toggle {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0 2px;
+}
+
+.area {
+  margin-top: 12px;
+}
+.area label {
+  color: var(--dim);
+}
+.area textarea {
+  margin-top: 4px;
+  font:
+    12px/1.4 ui-monospace,
+    Menlo,
+    Consolas,
+    monospace;
+  resize: vertical;
+}
+
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.seg button {
+  background: none;
+  border: none;
+  color: var(--dim);
+  padding: 5px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+.seg button.on {
+  background: var(--accent);
+  color: #1a0f0a;
+  font-weight: 600;
+}

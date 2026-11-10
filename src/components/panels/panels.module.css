@@ -1,0 +1,180 @@
+.profileHead {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.hint {
+  color: var(--dim);
+  margin: 6px 0;
+}
+
+.textures {
+  margin: 8px 0;
+  display: grid;
+  gap: 8px;
+}
+
+.tex {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 10px 10px;
+}
+
+.texHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.texHead strong {
+  flex: 1;
+}
+
+.x {
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+}
+.x:hover {
+  color: var(--bad);
+}
+
+.maskRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+.maskOn {
+  color: var(--paint);
+}
+
+.paintTools {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+.buttonRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.editor {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+.profileActions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.setupRow {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+.derived {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 10px 0 2px;
+  padding: 8px 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.derived dt {
+  color: var(--dim);
+}
+.derived dd {
+  margin: 0;
+}
+.derived small {
+  color: var(--dim);
+}
+.callout {
+  margin: 6px 0;
+  padding: 8px 10px;
+  background: var(--panel-2);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+}
+.fileBtn {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+.fileBtn:hover {
+  border-color: var(--accent);
+}
+
+.group {
+  margin: 14px 0 0;
+  padding: 0 0 4px;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.group legend {
+  padding: 0 8px 0 0;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.tagGcode {
+  color: var(--accent-2);
+}
+.tagAnalysis {
+  color: var(--dim);
+}
+.groupNote {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--dim);
+}
+.colorRow {
+  display: grid;
+  grid-template-columns: auto 44px 1fr;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  font-size: 13px;
+}
+.colorRow input[type='color'] {
+  width: 44px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+.colorRow small {
+  color: var(--dim);
+  font-size: 11px;
+}
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  vertical-align: baseline;
+}

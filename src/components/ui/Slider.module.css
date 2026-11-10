@@ -1,0 +1,41 @@
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 8px;
+  align-items: center;
+  margin: 8px 0 2px;
+}
+
+.label {
+  color: var(--dim);
+}
+
+.value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.num {
+  width: 68px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 6px;
+  text-align: right;
+  font: inherit;
+}
+
+.unit {
+  color: var(--dim);
+  font-size: 11px;
+  min-width: 18px;
+}
+
+.range {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 2px 0 0;
+}

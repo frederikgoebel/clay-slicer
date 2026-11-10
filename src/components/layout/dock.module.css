@@ -1,0 +1,171 @@
+.dock {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--panel);
+}
+.left {
+  border-right: 1px solid var(--line);
+}
+.right {
+  border-left: 1px solid var(--line);
+}
+.tabs {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 8px 8px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--line);
+}
+.tab,
+.tabOn {
+  flex: 1 1 auto;
+  padding: 8px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--dim);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: grab;
+  touch-action: none;
+}
+.tab:hover {
+  color: var(--text);
+}
+.tabOn {
+  color: var(--text);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.grip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: col-resize;
+  z-index: 5;
+  touch-action: none;
+}
+.gripRight {
+  right: -4px;
+}
+.gripLeft {
+  left: -4px;
+}
+.grip:hover,
+.grip:focus-visible {
+  background: var(--accent);
+  opacity: 0.5;
+  outline: none;
+}
+
+.float {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  min-width: 260px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.floatTitle {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 8px 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.floatBtns {
+  display: flex;
+  gap: 2px;
+}
+.floatBtns button {
+  background: none;
+  border: 0;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 6px;
+}
+.floatBtns button:hover {
+  color: var(--text);
+}
+.corner {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  background: linear-gradient(
+    135deg,
+    transparent 50%,
+    var(--dim) 50%,
+    var(--dim) 58%,
+    transparent 58%,
+    transparent 72%,
+    var(--dim) 72%,
+    var(--dim) 80%,
+    transparent 80%
+  );
+  opacity: 0.6;
+  touch-action: none;
+}
+
+.zone {
+  position: fixed;
+  top: 52px;
+  bottom: 0;
+  width: 90px;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--dim);
+  border: 2px dashed var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  pointer-events: none;
+}
+.zoneLeft {
+  left: 0;
+}
+.zoneRight {
+  right: 0;
+}
+.zoneOn {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgba(232, 121, 74, 0.18);
+}
+.ghost {
+  position: fixed;
+  z-index: 100;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--panel-2);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
