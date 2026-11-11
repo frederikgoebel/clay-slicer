@@ -14,7 +14,6 @@ interface MaskState {
   ensure: (id: string, fill: number) => Mask;
   /** Back to "texture applies everywhere". */
   clear: (id: string) => void;
-  fill: (id: string) => void;
   invert: (id: string) => void;
   /** Replace all masks (project load). */
   replaceAll: (masks: Record<string, Mask>) => void;
@@ -37,8 +36,6 @@ export const useMaskStore = create<MaskState>()((set, get) => ({
       delete masks[id];
       return { masks, version: s.version + 1 };
     }),
-  fill: (id) =>
-    set((s) => ({ masks: { ...s.masks, [id]: createMask(255) }, version: s.version + 1 })),
   invert: (id) =>
     set((s) => ({
       masks: { ...s.masks, [id]: invertMask(s.masks[id] ?? createMask(255)) },

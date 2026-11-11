@@ -9,7 +9,8 @@ export const TEST_WIDTH = 4;
 /** Settings from the built-in profiles, with small overrides for fast tests. */
 export function testSettings(o: Partial<SliceSettings> = {}): SliceSettings {
   const s = resolveSliceSettings(
-    BUILTIN_PROFILES.printer[0],
+    BUILTIN_PROFILES.printer.find((p) => p.id === 'printer-wasp-2040') ??
+      BUILTIN_PROFILES.printer[0],
     BUILTIN_PROFILES.nozzle[1],
     BUILTIN_PROFILES.clay[0],
     DEFAULT_PRINT,
@@ -20,6 +21,8 @@ export function testSettings(o: Partial<SliceSettings> = {}): SliceSettings {
     layerHeight: 2,
     extrusionRate: beadArea(TEST_WIDTH, 2) * s.printSpeed,
     nozzle: 3,
+    overhangMax: 25,
+    floorSpacingPct: 90,
     segLen: 2,
     ...o,
   };

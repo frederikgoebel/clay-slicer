@@ -10,6 +10,9 @@ export class PathBuilder {
   readonly overhang: number[] = [];
   readonly dwell: number[] = [];
 
+  /** index of the first point after the floor, where an optional pause goes; -1 = none */
+  pauseAt = -1;
+
   private lastSpeed = NaN;
   private lastWidth = 0;
 

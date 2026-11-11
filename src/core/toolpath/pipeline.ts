@@ -1,7 +1,7 @@
 import type { SliceSettings, ToolpathResult } from '../types';
 import { addFloor } from './floor';
 import { PathBuilder } from './PathBuilder';
-import { buildRings } from './rings';
+import { buildRings, floorBelowLayers, floorLayerCount } from './rings';
 import { computeStats } from './stats';
 import { verifyToolpath } from './verify';
 import { addWall } from './wall';
@@ -17,9 +17,12 @@ export function runPipeline(pos: Float32Array, s: SliceSettings): ToolpathResult
   const set = buildRings(pos, s);
   const path = new PathBuilder(s);
   addFloor(path, set, s);
+  if (s.pauseAfterFloor && floorLayerCount(s) > 0) path.pauseAt = path.count;
   addWall(path, set, s);
 
-  const { stats, warnings } = computeStats(path, s, set.layers, performance.now() - t0);
+  const layers = set.layers + floorBelowLayers(s);
+  const pauseS = path.pauseAt > 0 ? s.pauseSeconds : 0;
+  const { stats, warnings } = computeStats(path, s, layers, performance.now() - t0, pauseS);
   const xyz = Float32Array.from(path.xyz);
   return {
     count: path.count,
@@ -29,6 +32,7 @@ export function runPipeline(pos: Float32Array, s: SliceSettings): ToolpathResult
     width: Float32Array.from(path.width),
     overhang: Float32Array.from(path.overhang),
     dwell: Float32Array.from(path.dwell),
+    pauseAt: path.pauseAt,
     stats,
     warnings: [...set.warnings, ...warnings, ...verifyToolpath(xyz, s)],
   };

@@ -24,7 +24,7 @@ const tex = (type: TextureLayer['type'], o: Partial<TextureLayer> = {}): Texture
   ...newTexture(type),
   from: 0,
   to: 100,
-  fade: 0,
+  solid: 100,
   ...o,
 });
 

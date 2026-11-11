@@ -2,7 +2,7 @@ import { angleU } from '../textures/mask';
 import { dwellSeconds, radialOffset, twistAngle, type TexCtx } from '../textures/textures';
 import { FEATURE_TOP, FEATURE_TRAVEL, FEATURE_WALL, type SliceSettings } from '../types';
 import type { PathBuilder } from './PathBuilder';
-import { floorLayerCount, type Ring, type RingSet } from './rings';
+import { floorBelowLayers, floorInsideLayers, type Ring, type RingSet } from './rings';
 
 const MIN_SPEED = 5;
 
@@ -10,7 +10,9 @@ const MIN_SPEED = 5;
 export function addWall(path: PathBuilder, set: RingSet, s: SliceSettings): void {
   const { rings, N, layers: L, zmax } = set;
   const h = s.layerHeight;
-  const F = floorLayerCount(s);
+  const F = floorInsideLayers(s);
+  /** a floor printed below the model lifts the whole wall */
+  const zOff = floorBelowLayers(s) * h;
   const H = L * h;
   const zStart = F * h;
   const textures = s.textures;
@@ -53,8 +55,9 @@ export function addWall(path: PathBuilder, set: RingSet, s: SliceSettings): void
     nx /= nl;
     ny /= nl;
 
+    const zr = z - zOff; // height within the model
     const ctx: TexCtx = {
-      z,
+      z: zr,
       H,
       t,
       idx,
@@ -62,14 +65,14 @@ export function addWall(path: PathBuilder, set: RingSet, s: SliceSettings): void
       zStart,
       fadeIn: s.textureFadeIn,
       u: angleU(bx, by),
-      v: z / zmax,
+      v: zr / zmax,
       ang: Math.atan2(by - cy, bx - cx),
       rad: Math.hypot(bx - cx, by - cy),
     };
     const off = textures.length ? radialOffset(textures, ctx) : 0;
     let x = bx + nx * off;
     let y = by + ny * off;
-    const tw = textures.length ? twistAngle(textures, z, H) : 0;
+    const tw = textures.length ? twistAngle(textures, zr, H) : 0;
     if (tw !== 0) {
       const dx = x - cx;
       const dy = y - cy;
@@ -104,17 +107,17 @@ export function addWall(path: PathBuilder, set: RingSet, s: SliceSettings): void
       const cur = scratch();
       for (let k = 0; k < N; k++) {
         const f = k / N;
-        point(A, B, f, k, (j + 1 + f) * h, f, speed, prev, cur, FEATURE_WALL);
+        point(A, B, f, k, (j + 1 + f) * h + zOff, f, speed, prev, cur, FEATURE_WALL);
       }
       prev = cur;
     }
     // closing point on the top contour, then an optional flat finishing ring
     const top = rings[L - 1];
     const speed = ringSpeed(top.perimeter);
-    point(top, null, 0, 0, L * h, 0, speed, prev, scratch(), FEATURE_WALL);
+    point(top, null, 0, 0, L * h + zOff, 0, speed, prev, scratch(), FEATURE_WALL);
     if (s.topFinish) {
       for (let k = 1; k <= N; k++)
-        point(top, null, 0, k, L * h, k / N, speed, null, scratch(), FEATURE_TOP);
+        point(top, null, 0, k, L * h + zOff, k / N, speed, null, scratch(), FEATURE_TOP);
     }
   } else {
     for (let r = 0; r < L - F; r++) {
@@ -123,7 +126,7 @@ export function addWall(path: PathBuilder, set: RingSet, s: SliceSettings): void
       const speed = ringSpeed(A.perimeter);
       const cur = scratch();
       for (let k = 0; k <= N; k++)
-        point(A, null, 0, k, (j + 1) * h, k / N, speed, prev, cur, FEATURE_WALL);
+        point(A, null, 0, k, (j + 1) * h + zOff, k / N, speed, prev, cur, FEATURE_WALL);
       prev = cur;
     }
   }

@@ -51,8 +51,10 @@ function heightMask(l: TextureLayer, z: number, H: number): number {
   const zf = (l.from / 100) * H;
   const zt = (l.to / 100) * H;
   if (z < zf || z > zt) return 0;
-  if (l.fade <= 0) return 1;
-  return smooth((z - zf) / l.fade) * smooth((zt - z) / l.fade);
+  const zs = Math.min(zt, Math.max(zf, ((l.solid ?? l.to) / 100) * H));
+  // full strength from `from` up to `solid`, then eases out to zero at `to`
+  if (z <= zs || zt <= zs) return 1;
+  return 1 - smooth((z - zs) / (zt - zs));
 }
 
 const wrapPi = (a: number) => a - TAU * Math.round(a / TAU);

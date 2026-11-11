@@ -102,7 +102,7 @@ describe('toolpath', () => {
   });
 
   it('only textures where the mask is painted', () => {
-    const wave = { ...newTexture('wave'), count: 6, wavelength: 0, amplitude: 2, fade: 0 };
+    const wave = { ...newTexture('wave'), count: 6, wavelength: 0, amplitude: 2 };
     const mask = createMask(0);
     // paint the +x half: u = angle / 2pi + 0.5, so u = 0.5 is +x and u in (0.25, 0.75) is x > 0
     for (let j = 0; j < mask.height; j++)
@@ -196,7 +196,7 @@ describe('no floor and blobs', () => {
     expect(g.split('\n').filter((l) => l.includes('; blob')).length).toBe(n);
   });
   it('scales the dwell with the painted mask and the start fade-in', () => {
-    const blob = { ...newTexture('blobs'), count: 10, amplitude: 2, wavelength: 6, fade: 0 };
+    const blob = { ...newTexture('blobs'), count: 10, amplitude: 2, wavelength: 6 };
     const maxDwell = (mask: number, fadeIn = 0) => {
       const m = createMask(0);
       m.data.fill(mask);

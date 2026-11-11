@@ -11,6 +11,7 @@ type Pt = [number, number];
  *
  *  - spiral: one continuous spiral per layer; layers alternate in/out so the last one ends at the
  *    seam, exactly where the wall starts
+ *  - insets: concentric loops following the contour, same in/out alternation as the spiral
  *  - lines:  parallel lines, turning 90 degrees on every layer
  *  - grid:   lines in both directions on every layer
  *
@@ -40,7 +41,7 @@ export function addFloor(path: PathBuilder, set: RingSet, s: SliceSettings): voi
   };
 
   for (let j = 0; j < F; j++) {
-    const ring = set.rings[j];
+    const ring = s.floorBelow ? set.rings[0] : set.rings[j];
     const z = (j + 1) * s.layerHeight;
     const perimeter: Pt[] = [];
     for (let k = 0; k <= set.N; k++) {
@@ -49,7 +50,17 @@ export function addFloor(path: PathBuilder, set: RingSet, s: SliceSettings): voi
     }
     const inner = insetRing(ring, set.N, spacing);
 
-    if (s.floorPattern === 'spiral') {
+    if (s.floorPattern === 'insets') {
+      const fromTop = F - 1 - j;
+      const loops = insetLoops(ring, set.N, spacing);
+      if (fromTop % 2 === 0) {
+        loops.reverse().forEach((l) => run(l, z, FEATURE_FLOOR));
+        run(perimeter, z, FEATURE_WALL);
+      } else {
+        run(perimeter, z, FEATURE_WALL);
+        loops.forEach((l) => run(l, z, FEATURE_FLOOR));
+      }
+    } else if (s.floorPattern === 'spiral') {
       const fromTop = F - 1 - j;
       const fill = spiralFill(inner, set.N, spacing, fromTop % 2 === 0);
       if (fromTop % 2 === 0) {
@@ -69,6 +80,21 @@ export function addFloor(path: PathBuilder, set: RingSet, s: SliceSettings): voi
       run(perimeter, z, FEATURE_WALL);
     }
   }
+}
+
+/** Closed loops at 1, 2, 3 ... line spacings inside the contour, outermost first. */
+function insetLoops(r: Ring, N: number, spacing: number): Pt[][] {
+  const loops: Pt[][] = [];
+  let prev = Infinity;
+  for (let i = 1; i < 400; i++) {
+    const pts = insetRing(r, N, spacing * i);
+    const a = area(pts);
+    if (!(a > spacing * spacing) || a >= prev) break;
+    prev = a;
+    pts.push(pts[0]);
+    loops.push(pts);
+  }
+  return loops;
 }
 
 /** The ring moved inward by `d` along its normals. */

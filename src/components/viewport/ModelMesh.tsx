@@ -14,6 +14,7 @@ import { createFullMaskTexture, createMaskTexture, createModelMaterial } from '.
 
 /** The matcap is fairly dark, so the clay colour is lifted a little before it is multiplied in. */
 const BRIGHTEN = 1.25;
+const LIVE_COMMIT_MS = 120;
 const CREASE_ANGLE = (40 * Math.PI) / 180; // smooth below 40°, keep sharp edges above
 
 function uniformColors(length: number, hex: string): Float32Array {
@@ -37,6 +38,7 @@ export function ModelMesh({ mesh }: { mesh: Float32Array }) {
   const painting = paint.textureId !== null && !placing;
   const interacting = paint.textureId !== null;
   const stroke = useRef<Stroke | null>(null);
+  const lastCommit = useRef(0);
   const height = useMemo(() => meshHeight(mesh), [mesh]);
   const clayColor = useActiveProfile('clay').color;
 
@@ -97,6 +99,12 @@ export function ModelMesh({ mesh }: { mesh: Float32Array }) {
     });
     const tex = useMaskStore.getState().masks[textureId];
     if (tex === target && maskTexture) maskTexture.needsUpdate = true;
+    // re-slice while dragging (throttled) so the print preview follows the brush
+    const now = performance.now();
+    if (now - lastCommit.current > LIVE_COMMIT_MS) {
+      lastCommit.current = now;
+      useMaskStore.getState().commit();
+    }
     invalidate();
   };
 
@@ -145,6 +153,17 @@ export function ModelMesh({ mesh }: { mesh: Float32Array }) {
         onPointerMove={interacting ? onMove : undefined}
         onPointerOut={interacting ? onOut : undefined}
       />
+      {interacting && !showModel && (
+        // the model is hidden behind the print preview, but still takes the brush
+        <mesh
+          geometry={geometry}
+          onPointerDown={onDown}
+          onPointerMove={onMove}
+          onPointerOut={onOut}
+        >
+          <meshBasicMaterial colorWrite={false} depthWrite={false} />
+        </mesh>
+      )}
       {interacting && (
         <mesh ref={cursor} visible={false} raycast={() => null}>
           <sphereGeometry args={[1, 24, 16]} />
@@ -153,6 +172,7 @@ export function ModelMesh({ mesh }: { mesh: Float32Array }) {
             transparent
             opacity={0.28}
             depthWrite={false}
+            depthTest={false}
           />
         </mesh>
       )}

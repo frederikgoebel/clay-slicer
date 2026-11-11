@@ -67,6 +67,15 @@ export function buildGcode(r: ToolpathResult, s: SliceSettings, name = 'model'):
   let lastF = -1;
   let lastFeature = -1;
   for (let i = 1; i < r.count; i++) {
+    if (i === r.pauseAt && s.pauseSeconds > 0) {
+      const zPrev = xyz[3 * i - 1];
+      const zUp = Math.min(s.buildHeight, zPrev + s.pauseLift);
+      out.push(`; pause after floor: ${fmt(s.pauseSeconds)} s`);
+      out.push(`G1 Z${fmt(zUp)} F1500`);
+      out.push(`G4 P${Math.round(s.pauseSeconds * 1000)}`);
+      out.push(`G1 Z${fmt(zPrev)} F1500`);
+      lastF = -1;
+    }
     const f = r.feature[i];
     if (f !== lastFeature) {
       out.push(`;TYPE:${FEATURE_NAME[f] ?? 'WALL'}`);

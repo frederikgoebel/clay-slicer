@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { runPipeline } from '../src/core/toolpath/pipeline';
 import { FEATURE_FLOOR, FEATURE_TRAVEL, FEATURE_WALL, type FloorPattern } from '../src/core/types';
+import { buildGcode } from '../src/core/gcode/gcode';
 import { cylinder, testSettings } from './helpers';
 
 const R = 20;
 
 describe('floor', () => {
-  for (const pattern of ['spiral', 'lines', 'grid'] as FloorPattern[]) {
+  for (const pattern of ['spiral', 'insets', 'lines', 'grid'] as FloorPattern[]) {
     it(`${pattern}: the outer shell is complete and the fill stays inside it`, () => {
       const r = runPipeline(
         cylinder(R, 60),
@@ -54,5 +55,45 @@ describe('clay colour', () => {
     expect(coerceProfile('clay', { color: '#112233' }).color).toBe('#112233');
     expect(coerceProfile('clay', { color: 'red' }).color).toMatch(/^#[0-9a-f]{6}$/i);
     expect(coerceProfile('clay', {}).color).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+});
+
+describe('floor below, pause and spacing', () => {
+  it('prints the floor under the whole model when asked', () => {
+    const base = testSettings({ floorLayers: 2 });
+    const a = runPipeline(cylinder(R, 60), base);
+    const b = runPipeline(cylinder(R, 60), { ...base, floorBelow: true });
+    expect(b.stats.layers).toBe(a.stats.layers + 2);
+    expect(b.stats.heightMm).toBeCloseTo(a.stats.heightMm + 4, 5);
+    expect(b.xyz[3 * (b.count - 1) + 2]).toBeCloseTo(a.xyz[3 * (a.count - 1) + 2] + 4, 5);
+  });
+  it('inset curves end the floor at the seam so the wall continues from it', () => {
+    const r = runPipeline(
+      cylinder(R, 60),
+      testSettings({ floorLayers: 3, floorPattern: 'insets' }),
+    );
+    let last = 0;
+    for (let i = 0; i < r.count; i++) if (r.xyz[3 * i + 2] <= 6.01) last = i;
+    const gap = Math.hypot(
+      r.xyz[3 * last] - r.xyz[3 * (last + 1)],
+      r.xyz[3 * last + 1] - r.xyz[3 * (last + 1) + 1],
+    );
+    expect(gap).toBeLessThan(4);
+  });
+  it('writes a lift, a wait and the return into the G-code', () => {
+    const s = testSettings({
+      floorLayers: 2,
+      pauseAfterFloor: true,
+      pauseSeconds: 20,
+      pauseLift: 300,
+    });
+    const r = runPipeline(cylinder(R, 60), s);
+    expect(r.pauseAt).toBeGreaterThan(0);
+    const g = buildGcode(r, s).split('\n');
+    const i = g.findIndex((l) => l.startsWith('G4 P20000'));
+    expect(i).toBeGreaterThan(0);
+    expect(g[i - 1]).toMatch(/^G1 Z\d/);
+    expect(g[i + 1]).toMatch(/^G1 Z4 /);
+    expect(runPipeline(cylinder(R, 60), { ...s, pauseAfterFloor: false }).pauseAt).toBe(-1);
   });
 });

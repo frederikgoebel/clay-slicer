@@ -27,6 +27,14 @@ export interface RingSet {
 export const floorLayerCount = (s: Pick<SliceSettings, 'floorLayers'>) =>
   Math.max(0, Math.round(s.floorLayers));
 
+/** Floor layers that replace the model's first layers (0 when the floor is printed below it). */
+export const floorInsideLayers = (s: Pick<SliceSettings, 'floorLayers' | 'floorBelow'>) =>
+  s.floorBelow ? 0 : floorLayerCount(s);
+
+/** Floor layers added underneath the model (0 when it replaces the first layers). */
+export const floorBelowLayers = (s: Pick<SliceSettings, 'floorLayers' | 'floorBelow'>) =>
+  s.floorBelow ? floorLayerCount(s) : 0;
+
 /**
  * Slice the mesh and reduce every layer to a single, resampled outer contour.
  * Layer j is cut at z=(j+.5)h and printed at nozzle height (j+1)h.
@@ -34,7 +42,7 @@ export const floorLayerCount = (s: Pick<SliceSettings, 'floorLayers'>) =>
 export function buildRings(pos: Float32Array, s: SliceSettings): RingSet {
   const warnings: string[] = [];
   const h = s.layerHeight;
-  const F = floorLayerCount(s);
+  const F = floorInsideLayers(s);
 
   const zmax = meshHeight(pos);
   if (!(zmax > 0)) throw new Error('Model is empty.');

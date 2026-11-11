@@ -32,8 +32,8 @@ export interface TextureLayer {
   /** height range the texture applies to, % of model height */
   from: number;
   to: number;
-  /** soft fade at the range edges, mm */
-  fade: number;
+  /** height (% of model) up to which the texture is at full strength; it fades out from here to `to` */
+  solid: number;
   /** add: sum with earlier layers; max: the higher of the two wins; replace: overrides them */
   blend: BlendMode;
   /** decal placement: centre angle around Z (deg, 0 = +X), centre height and size on the surface (mm), rotation (deg) */
@@ -88,6 +88,13 @@ export interface SliceSettings {
   floorLayers: number;
   floorSpacingPct: number;
   floorPattern: FloorPattern;
+  /** print the floor underneath the model instead of replacing its first layers */
+  floorBelow: boolean;
+  /** stop after the floor: lift the nozzle, wait, come back */
+  pauseAfterFloor: boolean;
+  pauseSeconds: number;
+  /** how far the nozzle lifts during the pause, mm */
+  pauseLift: number;
   /** direction of the first line layer for the line / grid patterns, degrees */
   floorAngle: number;
   textureFadeIn: number;
@@ -102,7 +109,7 @@ export interface MeshTransform {
   shrinkagePct: number;
 }
 
-export type FloorPattern = 'spiral' | 'lines' | 'grid';
+export type FloorPattern = 'spiral' | 'insets' | 'lines' | 'grid';
 
 export const FEATURE_TRAVEL = 0;
 export const FEATURE_FLOOR = 1;
@@ -142,6 +149,8 @@ export interface ToolpathResult {
   overhang: Float32Array;
   /** seconds the nozzle stands still extruding at each point (blobs), 0 = moving */
   dwell: Float32Array;
+  /** index of the point the pause after the floor comes before, -1 = no pause */
+  pauseAt: number;
   stats: ToolpathStats;
   warnings: string[];
 }

@@ -65,6 +65,7 @@ export const PROFILE_KINDS: ProfileKind[] = ['printer', 'nozzle', 'clay'];
 
 const START_GCODE = 'G21 ; mm\nG90 ; absolute XYZ\nM82 ; absolute extrusion\nG28 ; home\nG92 E0';
 const END_GCODE = 'G91\nG1 Z10 F1500\nG90\nM84';
+const WASP_END_GCODE = 'G28 X0 Y0 ; MOVE TO ORIGIN (HOME)';
 
 const printer = (p: Omit<PrinterProfile, 'builtin'>): PrinterProfile => ({ ...p, builtin: true });
 const nozzle = (p: Omit<NozzleProfile, 'builtin'>): NozzleProfile => ({ ...p, builtin: true });
@@ -85,7 +86,17 @@ export const BUILTIN_PROFILES: ProfileLists = {
   printer: [
     printer({
       ...PRINTER_BASE,
+      id: 'printer-wasp-4070',
+      endGcode: WASP_END_GCODE,
+      name: 'WASP Delta 4070 Pro Clay',
+      buildDiameter: 400,
+      buildHeight: 800,
+      tankCm3: 3000,
+    }),
+    printer({
+      ...PRINTER_BASE,
       id: 'printer-wasp-2040',
+      endGcode: WASP_END_GCODE,
       name: 'WASP Delta 2040 Clay',
       buildDiameter: 200,
       buildHeight: 400,
@@ -94,6 +105,7 @@ export const BUILTIN_PROFILES: ProfileLists = {
     printer({
       ...PRINTER_BASE,
       id: 'printer-wasp-40100',
+      endGcode: WASP_END_GCODE,
       name: 'WASP Delta 40100 Clay',
       buildDiameter: 400,
       buildHeight: 1000,
@@ -126,38 +138,14 @@ export const BUILTIN_PROFILES: ProfileLists = {
       density: 1.9,
       waterPct: 20,
       shrinkagePct: 12,
-      overhangMax: 25,
-    }),
-    clay({
-      id: 'clay-porcelain',
-      color: '#efe9df',
-      name: 'Porcelain',
-      printSpeed: 25,
-      flow: 100,
-      minLayerTime: 10,
-      density: 1.8,
-      waterPct: 22,
-      shrinkagePct: 14,
-      overhangMax: 20,
-    }),
-    clay({
-      id: 'clay-terracotta',
-      color: '#c1613a',
-      name: 'Terracotta',
-      printSpeed: 35,
-      flow: 100,
-      minLayerTime: 0,
-      density: 1.95,
-      waterPct: 18,
-      shrinkagePct: 8,
-      overhangMax: 30,
+      overhangMax: 40,
     }),
   ],
 };
 
 export const DEFAULT_SELECTION: Record<ProfileKind, string> = {
-  printer: 'printer-wasp-2040',
-  nozzle: 'nozzle-3',
+  printer: 'printer-wasp-4070',
+  nozzle: 'nozzle-2',
   clay: 'clay-stoneware',
 };
 
@@ -194,6 +182,10 @@ export function resolveSliceSettings(
     topFinish: print.topFinish,
     floorLayers: print.floorLayers,
     floorSpacingPct: print.floorSpacingPct,
+    floorBelow: print.floorBelow,
+    pauseAfterFloor: print.pauseAfterFloor,
+    pauseSeconds: print.pauseSeconds,
+    pauseLift: print.pauseLift,
     floorPattern: print.floorPattern,
     floorAngle: print.floorAngle,
     textureFadeIn: print.textureFadeIn,

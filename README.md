@@ -11,8 +11,8 @@ A browser-based slicer for clay 3D printing on WASP delta printers. It runs enti
 | Load          | STL (binary/ASCII) by drag-and-drop or file picker, three sample models, rotate/scale, drop to bed                                                                                                                                                                                                                                                                    |
 | Profiles      | Pick a **printer**, a **nozzle** and a **clay** profile independently. Built-ins are starting points; editing one forks your own copy (saved in the browser). Copy / rename / delete, plus JSON import / export. Active setup with an **Edit** button per profile that opens the editor as a popup. Lives in the _Print Setup_ panel together with the print settings |
 | Slicing       | Spiral (vase) mode with seam-aligned contour interpolation, or layered rings. Floor as a continuous spiral that flows into the wall                                                                                                                                                                                                                                   |
-| Textures      | Stackable fuzzy skin, waves, zigzag, ribs, twist. Each has a height range with edge fade and an optional **painted mask**                                                                                                                                                                                                                                             |
-| Mask painting | Paint (or erase) where a texture applies directly on the 3D model. Right mouse button rotates while painting                                                                                                                                                                                                                                                          |
+| Textures      | Stackable fuzzy skin, waves, zigzag, ribs, twist. Each has a split height range (start, fade-out start, end) and an optional **painted mask**                                                                                                                                                                                                                                             |
+| Mask painting | Paint (or erase) where a texture applies directly on the model; the view shows the finished print and updates live while you draw. Right mouse button rotates while painting                                                                                                                                                                                                                                                          |
 | Bead width    | Per-point estimate from extrusion rate, layer height, flow factor and speed, the "Print preview" meshes every bead at its estimated width                                                                                                                                                                                                                             |
 | Analysis      | Overhang overlay on the model and colouring on the toolpath (measured on the final path, textures included); estimates for time, clay, weight, tank refills                                                                                                                                                                                                           |
 | Preview       | Shaded matcap model with smooth normals; unlit crisp toolpath lines; layer slider and playback; colour by height, floor/wall, overhang, speed or bead width                                                                                                                                                                                                           |
@@ -84,7 +84,7 @@ src/
 tests/                  vitest
 ```
 
-Data flow: stores -> `useMesh` / `useSliceSettings` -> `useSlicer` (debounced, in a Web Worker) -> `sliceStore` -> viewport and stats. Painted masks mutate in place while you drag and re-slice once when you release.
+Data flow: stores -> `useMesh` / `useSliceSettings` -> `useSlicer` (debounced, in a Web Worker) -> `sliceStore` -> viewport and stats. Painted masks mutate in place while you drag; the slicer re-runs about every 120 ms during a stroke (one slice at a time) and once more on release.
 
 ### Views
 
@@ -99,7 +99,7 @@ Data flow: stores -> `useMesh` / `useSliceSettings` -> `useSlicer` (debounced, i
 
 ### Floor, clay colour and measurements
 
-- **Floor**: every floor layer is a full outer loop on the model's contour (the shell is never cut into) plus a fill one line spacing inside it. Patterns: spiral, lines (turning 90° each layer) and grid (both directions on every layer).
+- **Floor**: every floor layer is a full outer loop on the model's contour (the shell is never cut into) plus a fill one line spacing inside it. Patterns: spiral, inset curves (concentric loops), lines (turning 90° each layer) and grid (both directions on every layer). Line spacing defaults to 140% and goes up to 200%. **Print the floor below the model** adds the floor layers underneath instead of replacing the model's first layers. **Pause after the floor** lifts the nozzle (default 300 mm, capped at the build height), waits (default 20 s) and returns; the lift is a `G1 Z` move and the wait a `G4 P`.
 - **Lighting**: in the print preview the lights follow the camera, so the side you look at is always lit.
 - **Clay colour**: each clay profile has a colour that tints the model view and the print preview.
 - **Profile settings** are split into _Used in the G-code_ and _Analysis only_ (estimates, warnings, preview).
@@ -120,7 +120,8 @@ On the **STL or Design** tab choose _Design_. A design is a stack of **sections*
 ### Textures: stacking, brush, decals
 
 - **Layers and blending:** textures are applied in list order (use the arrows to reorder). Each layer blends onto the result of the ones before it: _Add_ sums, _Max_ keeps the higher one, _Replace_ overrides. A layer's height range and painted mask weight it, so a half-strength area gives half the effect.
-- **Brush:** hardness (soft edge) and opacity. A stroke paints like a grayscale image: overlapping stamps within one stroke do not pile up, and painting over it again builds up. Erase works the same way.
+- **Height range:** one track with three handles: where the texture starts, the round handle where it begins to fade out, and where it ends.
+- **Brush:** hardness (soft edge) and opacity. _Everywhere_ clears the mask, _Invert_ flips it. A stroke paints like a grayscale image: overlapping stamps within one stroke do not pile up, and painting over it again builds up. Erase works the same way.
 - **Decal:** load any image (bright = raised, or engraved with _Invert_; transparency counts as black). Set width and height in mm on the surface, rotation and relief depth, and click or drag on the model to place it. Decal images are saved in project files.
 
 ## Known limits and next steps
@@ -131,3 +132,7 @@ On the **STL or Design** tab choose _Design_. A design is a stack of **sections*
 - The floor fill scales the first contour toward its centroid: exact for round shapes, approximate otherwise. A polygon offset (Clipper2) would fix that.
 - No mesh repair yet; the mesh must be watertight (an open mesh gives "no closed contour").
 - Not yet: image/heightmap displacement, lay-flat on face, drying-pause planner, shareable links, 3MF/OBJ import, tall-print stability checks, G-code upload to the printer.
+
+## Defaults
+
+Printer WASP Delta 4070 Pro (400 × 400 × 800 mm; other values like the 2040), 2 mm nozzle, stoneware (overhang warning at 40°).

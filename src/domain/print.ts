@@ -14,6 +14,12 @@ export interface PrintSettings {
   floorSpacingPct: number;
   floorPattern: FloorPattern;
   floorAngle: number;
+  floorBelow: boolean;
+  pauseAfterFloor: boolean;
+  /** seconds */
+  pauseSeconds: number;
+  /** mm the nozzle lifts during the pause */
+  pauseLift: number;
   textureFadeIn: number;
 }
 
@@ -27,9 +33,13 @@ export const DEFAULT_PRINT: PrintSettings = {
   seamAngle: 0,
   topFinish: true,
   floorLayers: 2,
-  floorSpacingPct: 90,
+  floorSpacingPct: 140,
   floorPattern: 'spiral',
   floorAngle: 45,
+  floorBelow: false,
+  pauseAfterFloor: false,
+  pauseSeconds: 20,
+  pauseLift: 300,
   textureFadeIn: 6,
 };
 
@@ -56,7 +66,7 @@ export function newTexture(type: TextureType): TextureLayer {
     seed: 1,
     from: 0,
     to: 100,
-    fade: 10,
+    solid: 100,
     blend: 'add',
     angle: 0,
     zc: 60,

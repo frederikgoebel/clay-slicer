@@ -10,6 +10,7 @@ const MODES: readonly (readonly [PrintMode, string])[] = [
 
 const FLOOR_PATTERNS: readonly (readonly [FloorPattern, string])[] = [
   ['spiral', 'Spiral'],
+  ['insets', 'Inset curves (concentric)'],
   ['lines', 'Lines (turn 90° each layer)'],
   ['grid', 'Grid (both directions each layer)'],
 ];
@@ -85,11 +86,48 @@ export function PrintPanel() {
           label="Line spacing"
           value={print.floorSpacingPct}
           min={50}
-          max={130}
+          max={200}
           step={1}
           unit="% of width"
           onChange={(floorSpacingPct) => setPrint({ floorSpacingPct })}
         />
+        {print.floorLayers > 0 && (
+          <Toggle
+            label="Print the floor below the model"
+            checked={print.floorBelow}
+            onChange={(floorBelow) => setPrint({ floorBelow })}
+          />
+        )}
+        {print.floorLayers > 0 && (
+          <Toggle
+            label="Pause after the floor"
+            checked={print.pauseAfterFloor}
+            onChange={(pauseAfterFloor) => setPrint({ pauseAfterFloor })}
+          />
+        )}
+        {print.floorLayers > 0 && print.pauseAfterFloor && (
+          <>
+            <Slider
+              label="Dwell time"
+              value={print.pauseSeconds}
+              min={1}
+              max={300}
+              step={1}
+              unit="s"
+              onChange={(pauseSeconds) => setPrint({ pauseSeconds })}
+            />
+            <Slider
+              label="Lift during pause"
+              value={print.pauseLift}
+              min={0}
+              max={800}
+              step={10}
+              unit="mm"
+              hint="The nozzle moves up this far (limited by the build height), waits, and comes back"
+              onChange={(pauseLift) => setPrint({ pauseLift })}
+            />
+          </>
+        )}
       </Section>
     </>
   );

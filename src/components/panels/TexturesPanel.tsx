@@ -7,23 +7,12 @@ import { useMaskStore } from '../../store/maskStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useUiStore } from '../../store/uiStore';
 import { Button, Section, Segmented, SelectField, Toggle } from '../ui/controls';
+import { RangeSlider } from '../ui/RangeSlider';
 import { Slider } from '../ui/Slider';
 import styles from './panels.module.css';
 
 interface TexField {
-  key:
-    | 'amplitude'
-    | 'count'
-    | 'wavelength'
-    | 'seed'
-    | 'from'
-    | 'to'
-    | 'fade'
-    | 'angle'
-    | 'zc'
-    | 'width'
-    | 'hgt'
-    | 'rot';
+  key: 'amplitude' | 'count' | 'wavelength' | 'seed' | 'angle' | 'zc' | 'width' | 'hgt' | 'rot';
   label: string;
   min: number;
   max: number;
@@ -31,17 +20,10 @@ interface TexField {
   unit?: string;
 }
 
-const RANGE: TexField[] = [
-  { key: 'from', label: 'From height', min: 0, max: 100, step: 1, unit: '%' },
-  { key: 'to', label: 'To height', min: 0, max: 100, step: 1, unit: '%' },
-];
-const FADE: TexField = { key: 'fade', label: 'Edge fade', min: 0, max: 50, step: 0.5, unit: 'mm' };
 const WAVE: TexField[] = [
   { key: 'amplitude', label: 'Amplitude', min: 0, max: 12, step: 0.1, unit: 'mm' },
   { key: 'count', label: 'Around', min: 0, max: 60, step: 1, unit: '×' },
   { key: 'wavelength', label: 'Vertical λ', min: 0, max: 120, step: 1, unit: 'mm' },
-  ...RANGE,
-  FADE,
 ];
 
 const FIELDS: Record<TextureType, TexField[]> = {
@@ -49,23 +31,17 @@ const FIELDS: Record<TextureType, TexField[]> = {
     { key: 'amplitude', label: 'Strength', min: 0, max: 3, step: 0.05, unit: 'mm' },
     { key: 'wavelength', label: 'Feature size', min: 0.5, max: 30, step: 0.5, unit: 'mm' },
     { key: 'seed', label: 'Seed', min: 1, max: 99, step: 1 },
-    ...RANGE,
-    FADE,
   ],
   wave: WAVE,
   zigzag: WAVE,
   ribs: [
     { key: 'amplitude', label: 'Depth', min: 0, max: 8, step: 0.1, unit: 'mm' },
     { key: 'count', label: 'Ribs', min: 1, max: 80, step: 1, unit: '×' },
-    ...RANGE,
-    FADE,
   ],
   blobs: [
     { key: 'amplitude', label: 'Dwell per blob', min: 0.1, max: 10, step: 0.1, unit: 's' },
     { key: 'count', label: 'Blobs per row', min: 1, max: 60, step: 1, unit: '×' },
     { key: 'wavelength', label: 'Row spacing', min: 0, max: 60, step: 1, unit: 'mm' },
-    ...RANGE,
-    FADE,
   ],
   decal: [
     { key: 'amplitude', label: 'Relief', min: -6, max: 6, step: 0.1, unit: 'mm' },
@@ -75,10 +51,7 @@ const FIELDS: Record<TextureType, TexField[]> = {
     { key: 'hgt', label: 'Height', min: 5, max: 400, step: 1, unit: 'mm' },
     { key: 'rot', label: 'Rotation', min: -180, max: 180, step: 1, unit: '°' },
   ],
-  twist: [
-    { key: 'amplitude', label: 'Total twist', min: -720, max: 720, step: 5, unit: '°' },
-    ...RANGE,
-  ],
+  twist: [{ key: 'amplitude', label: 'Total twist', min: -720, max: 720, step: 5, unit: '°' }],
 };
 
 const BLENDS: readonly (readonly [BlendMode, string])[] = [
@@ -97,7 +70,6 @@ function PaintTools({ id }: { id: string }) {
   const patchPaint = useUiStore((s) => s.patchPaint);
   const setPaintTexture = useUiStore((s) => s.setPaintTexture);
   const clear = useMaskStore((s) => s.clear);
-  const fill = useMaskStore((s) => s.fill);
   const invert = useMaskStore((s) => s.invert);
   return (
     <div className={styles.paintTools}>
@@ -142,9 +114,6 @@ function PaintTools({ id }: { id: string }) {
       <div className={styles.buttonRow}>
         <Button small onClick={() => clear(id)} title="Texture applies everywhere again">
           Everywhere
-        </Button>
-        <Button small onClick={() => fill(id)}>
-          Fill
         </Button>
         <Button small onClick={() => invert(id)}>
           Invert
@@ -233,6 +202,12 @@ function TextureCard({ tex }: { tex: TextureLayer }) {
             }}
           />
         </div>
+      )}
+      {tex.type !== 'decal' && (
+        <RangeSlider
+          value={{ from: tex.from, solid: tex.solid, to: tex.to }}
+          onChange={(r) => patch(tex.id, r)}
+        />
       )}
       {FIELDS[tex.type].map((f) => (
         <Slider

@@ -8,12 +8,13 @@ export function computeStats(
   s: SliceSettings,
   layers: number,
   sliceMs: number,
+  pauseS = 0,
 ): { stats: ToolpathStats; warnings: string[] } {
   const { xyz, feature, speed, width, overhang, dwell } = p;
   const n = p.count;
   const h = s.layerHeight;
   let lengthMm = 0;
-  let timeS = 0;
+  let timeS = pauseS;
   let volMm3 = 0;
   let maxR = 0;
   let maxOh = 0;
