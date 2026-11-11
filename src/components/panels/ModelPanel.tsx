@@ -1,3 +1,4 @@
+import { PRINT_FIELDS as F } from '../../domain/printLabels';
 import { useModelStore } from '../../store/modelStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { Section } from '../ui/controls';
@@ -10,7 +11,7 @@ export function ModelPanel() {
   return (
     <Section title="Model" defaultOpen>
       <Slider
-        label="Scale"
+        label={F.scalePct.label}
         value={print.scalePct}
         min={10}
         max={400}
@@ -22,7 +23,7 @@ export function ModelPanel() {
       {!drawn && (
         <>
           <Slider
-            label="Rotate X"
+            label={F.rotX.label}
             value={print.rotX}
             min={-180}
             max={180}
@@ -31,7 +32,7 @@ export function ModelPanel() {
             onChange={(rotX) => setPrint({ rotX })}
           />
           <Slider
-            label="Rotate Y"
+            label={F.rotY.label}
             value={print.rotY}
             min={-180}
             max={180}
@@ -40,7 +41,7 @@ export function ModelPanel() {
             onChange={(rotY) => setPrint({ rotY })}
           />
           <Slider
-            label="Rotate Z"
+            label={F.rotZ.label}
             value={print.rotZ}
             min={-180}
             max={180}

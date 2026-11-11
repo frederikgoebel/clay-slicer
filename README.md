@@ -11,8 +11,8 @@ A browser-based slicer for clay 3D printing on WASP delta printers. It runs enti
 | Load          | STL (binary/ASCII) by drag-and-drop or file picker, three sample models, rotate/scale, drop to bed                                                                                                                                                                                                                                                                    |
 | Profiles      | Pick a **printer**, a **nozzle** and a **clay** profile independently. Built-ins are starting points; editing one forks your own copy (saved in the browser). Copy / rename / delete, plus JSON import / export. Active setup with an **Edit** button per profile that opens the editor as a popup. Lives in the _Print Setup_ panel together with the print settings |
 | Slicing       | Spiral (vase) mode with seam-aligned contour interpolation, or layered rings. Floor as a continuous spiral that flows into the wall                                                                                                                                                                                                                                   |
-| Textures      | Stackable fuzzy skin, waves, zigzag, ribs, twist. Each has a split height range (start, fade-out start, end) and an optional **painted mask**                                                                                                                                                                                                                                             |
-| Mask painting | Paint (or erase) where a texture applies directly on the model; the view shows the finished print and updates live while you draw. Right mouse button rotates while painting                                                                                                                                                                                                                                                          |
+| Textures      | Stackable fuzzy skin, waves, zigzag, ribs, twist. Each has a split height range (start, fade-out start, end) and an optional **painted mask**                                                                                                                                                                                                                         |
+| Mask painting | Paint (or erase) where a texture applies directly on the model; the view shows the finished print and updates live while you draw. Right mouse button rotates while painting                                                                                                                                                                                          |
 | Bead width    | Per-point estimate from extrusion rate, layer height, flow factor and speed, the "Print preview" meshes every bead at its estimated width                                                                                                                                                                                                                             |
 | Analysis      | Overhang overlay on the model and colouring on the toolpath (measured on the final path, textures included); estimates for time, clay, weight, tank refills                                                                                                                                                                                                           |
 | Preview       | Shaded matcap model with smooth normals; unlit crisp toolpath lines; layer slider and playback; colour by height, floor/wall, overhang, speed or bead width                                                                                                                                                                                                           |
@@ -58,7 +58,7 @@ Clay printers push material through the E axis, and the right scale depends on y
 E per mm = programmed bead volume per mm / area of a "filament" with diameter eDia
 ```
 
-so **`E-axis Ø` (default 1.75 mm) in the printer profile is a placeholder**. Print a short test line, measure the bead, and adjust `E-axis Ø` and the clay profile's `Flow factor` until it matches. Also check bed size, tank volume, start/end G-code and homing for your machine. All built-in profile values are rough starting points.
+so **`E-axis Ø` (default 4.5 mm) in the printer profile is a placeholder**. Print a short test line, measure the bead, and adjust `E-axis Ø` and the clay profile's `Flow factor` until it matches. Also check bed size, tank volume, start/end G-code and homing for your machine. All built-in profile values are rough starting points.
 
 ## Code layout
 
@@ -119,8 +119,10 @@ On the **STL or Design** tab choose _Design_. A design is a stack of **sections*
 
 ### Textures: stacking, brush, decals
 
+Every texture card has a small picture of the model with **only that texture** applied (a coarse, lit front view, so fine detail is approximate). Fold a card with the arrow to keep the list short; the picture stays visible. Drag the grip on the left to reorder (textures apply from top to bottom); with the grip focused the Up/Down arrow keys also move it. The thumbnail code is `core/textures/thumb.ts`.
+
 - **Layers and blending:** textures are applied in list order (use the arrows to reorder). Each layer blends onto the result of the ones before it: _Add_ sums, _Max_ keeps the higher one, _Replace_ overrides. A layer's height range and painted mask weight it, so a half-strength area gives half the effect.
-- **Height range:** one track with three handles: where the texture starts, the round handle where it begins to fade out, and where it ends.
+- **Height range:** one track with four handles. The tall outer handles are where the texture starts and ends; the round handles below the track are where it reaches full strength and where it starts to fade out (fade in and fade out are independent).
 - **Brush:** hardness (soft edge) and opacity. _Everywhere_ clears the mask, _Invert_ flips it. A stroke paints like a grayscale image: overlapping stamps within one stroke do not pile up, and painting over it again builds up. Erase works the same way.
 - **Decal:** load any image (bright = raised, or engraved with _Invert_; transparency counts as black). Set width and height in mm on the surface, rotation and relief depth, and click or drag on the model to place it. Decal images are saved in project files.
 
@@ -133,6 +135,28 @@ On the **STL or Design** tab choose _Design_. A design is a stack of **sections*
 - No mesh repair yet; the mesh must be watertight (an open mesh gives "no closed contour").
 - Not yet: image/heightmap displacement, lay-flat on face, drying-pause planner, shareable links, 3MF/OBJ import, tall-print stability checks, G-code upload to the printer.
 
+## More textures
+
+- **Outdents (ledges):** every layer within the height range goes a little further out, like a corbel. Two graph editors shape it: _Outdent over height_ (how the outdent grows and returns; presets _Close slowly_, _Bridge back_ and _Stay open_ (goes out and stays out to the end of the range), where the print jumps back to the normal wall in one layer so that layer bridges the gap) and _Outdent around_ (strength around the object; _Repeats around_ repeats the graph). _Repeats in height_ repeats the height graph within the range, and _Rotate each repeat_ turns each repeat further around the object (the around-graph is turned with it). Click a graph to add a point, double-click a point to remove it. The overhang warnings measure the result.
+- **Slings:** the print head leaves the wall for a short outward spike so the clay droops. Rows every _Row spacing_ mm, _Slings per row_, _Reach_ and _Sling width_. _Layers that droop_ sets how many consecutive layers hang down from each row, and _Rotate each row_ turns the next row of slings by that angle.
+- **Clay blobs: Lift while extruding:** while a blob is made the nozzle rises slowly (`G1 Z.. E..`) and then returns, so the blob is not squeezed flat. 0 = stands still.
+
+## Slicing modes, non-planar tops and travel moves
+
+- **Mode:** _Spiral (vase mode)_, _Layered rings_ and the new _Standard layers_. Standard layers prints every curve of every layer: outer walls, the inner walls of holes and separate parts. Between curves the nozzle travels (rising by the _Z hop_), with a retraction written to the G-code. The floor is still made from the largest outer contour only, and overhang analysis is not done in this mode.
+- **Non-planar top:** for an object whose top is slanted or curved (a rim cut at an angle, a dome). _Close the curves_ is the previous behaviour: each layer is a closed loop, so a slanted rim gets a cut-face across the opening. _Open lines_ leaves out the parts of the contour that lie on a top surface (faces tilted up to _Top surface tilt_ from flat, default 35°), so every layer is only the wall: separate lines, each its own extrusion. Between them the nozzle rises, runs just outside the wall (4 mm out, along the side that does not cross the opening) and comes down on the next line. In spiral mode the spiral continues up to the first layer with a top surface and the rest is printed as open lines. Faces flatter than the tilt anywhere (a shoulder, a dome) are treated as top too, so use it only where you want that.
+- **Travel moves:** _Retraction_ (mm of E, default 3; 0 = off), _Retraction speed_ and _Z hop_. They apply to every travel move longer than 3 mm, including floor patterns with separate lines. G-code is `G1 E-` before and `G1 E+` after the move, marked `; retract` / `; unretract`.
+
+## STL units
+
+STL files have no units. When a loaded model is under 10 mm or does not fit the printer (taken as millimetres), a dialog asks for the units (mm, cm, inch, m, or scale to fit) and preselects a guess: the unit that gives a size near 120 mm inside the build volume. Enter accepts the guess.
+
 ## Defaults
 
 Printer WASP Delta 4070 Pro (400 × 400 × 800 mm; other values like the 2040), 2 mm nozzle, stoneware (overhang warning at 40°).
+
+## Undo, redo and history
+
+Ctrl/Cmd+Z undoes, Shift+Ctrl/Cmd+Z (or Ctrl+Y) redoes; there are also Undo / Redo buttons in the top bar. Tracked: print settings, textures (incl. order and painted masks), profiles and which are selected, and the drawn shape. Not tracked: loading a model file, decal images, view settings. Quick edits of the same value (a slider drag, one brush stroke) become one step.
+
+**History** lists every step. _Undo this_ switches off a single step even if it is old; the steps after it stay in place. In the design, every section (P1, P2 ...) and every property is its own entry, so moving P2 and then P3 can be undone in either order. Entries show icons for what changed (move, scale, rotate ...) and use the names of the editor fields. A step is simply on or off, and a value is whatever the newest step that is on says, so you can switch any step back on later. When two steps changed the same value, the later one wins; the older one is marked "replaced later". Painted masks are stored per mask, so an older stroke on a mask that was painted again later is "replaced later" too. The history keeps the last 200 steps and lives until the page is closed. The logic is in `domain/history.ts` (framework-free, tested) and `store/historyStore.ts`.

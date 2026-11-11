@@ -1,6 +1,6 @@
 import { centroid, findSeam, normals, resample, signedArea } from '../geometry/contour';
 import { meshHeight } from '../geometry/mesh';
-import { sliceLayers } from '../geometry/slice';
+import { sliceLayersFlagged, type FlaggedLoop } from '../geometry/slice';
 import type { SliceSettings } from '../types';
 
 /** One layer's outer contour, resampled to N points starting at the seam. */
@@ -11,6 +11,8 @@ export interface Ring {
   cy: number;
   perimeter: number;
   area: number;
+  /** 1 = this point lies on an upward-facing (top) surface; only set when open top curves are asked for */
+  cap: Uint8Array;
 }
 
 export interface RingSet {
@@ -22,6 +24,8 @@ export interface RingSet {
   /** model height in mm */
   zmax: number;
   warnings: string[];
+  /** every sliced loop per layer (outer contours and holes), for the standard layer mode */
+  loops: FlaggedLoop[][];
 }
 
 export const floorLayerCount = (s: Pick<SliceSettings, 'floorLayers'>) =>
@@ -49,17 +53,19 @@ export function buildRings(pos: Float32Array, s: SliceSettings): RingSet {
   let L = Math.ceil(zmax / h - 0.5 - 1e-9);
   if (L < F + 2) throw new Error('Model is too low for this layer height and floor thickness.');
 
-  const sliced = sliceLayers(pos, h, L);
-  const outers: Float64Array[] = [];
+  const capCos = s.topCurves === 'open' ? Math.cos((s.topAngle * Math.PI) / 180) : 2;
+  const sliced = sliceLayersFlagged(pos, h, L, capCos);
+  const normal = s.mode === 'normal';
+  const outers: FlaggedLoop[] = [];
   let islandsAt = -1;
   let holesAt = -1;
   for (let j = 0; j < L; j++) {
-    let best: Float64Array | null = null;
+    let best: FlaggedLoop | null = null;
     let bestArea = 0;
     let islands = 0;
     let holes = 0;
     for (const loop of sliced[j]) {
-      const a = signedArea(loop);
+      const a = signedArea(loop.xy);
       if (a > 1) {
         islands++;
         if (a > bestArea) {
@@ -80,17 +86,17 @@ export function buildRings(pos: Float32Array, s: SliceSettings): RingSet {
     outers.push(best);
   }
   if (L < F + 2) throw new Error('Not enough valid layers to build a print.');
-  if (islandsAt >= 0)
+  if (islandsAt >= 0 && !normal)
     warnings.push(
       `Several separate parts from layer ${islandsAt + 1} up: only the largest one is printed.`,
     );
-  if (holesAt >= 0)
+  if (holesAt >= 0 && !normal)
     warnings.push(
       `Inner walls/holes from layer ${holesAt + 1} up are ignored (single-wall print).`,
     );
 
   let pMax = 0;
-  for (const o of outers) {
+  for (const { xy: o } of outers) {
     const n = o.length / 2;
     let p = 0;
     for (let i = 0; i < n; i++) {
@@ -101,10 +107,18 @@ export function buildRings(pos: Float32Array, s: SliceSettings): RingSet {
   }
   const N = Math.min(4000, Math.max(32, Math.ceil(pMax / s.segLen)));
   const seamRad = (s.seamAngle * Math.PI) / 180;
-  const rings = outers.map((o): Ring => {
+  const rings = outers.map(({ xy: o, cap }): Ring => {
     const [cx, cy] = centroid(o);
-    const r = resample(o, findSeam(o, cx, cy, seamRad), N);
-    return { xy: r.xy, nxy: normals(r.xy), cx, cy, perimeter: r.perimeter, area: signedArea(o) };
+    const r = resample(o, findSeam(o, cx, cy, seamRad), N, cap);
+    return {
+      xy: r.xy,
+      nxy: normals(r.xy),
+      cx,
+      cy,
+      perimeter: r.perimeter,
+      area: signedArea(o),
+      cap: r.flag,
+    };
   });
-  return { rings, N, layers: L, zmax, warnings };
+  return { rings, N, layers: L, zmax, warnings, loops: sliced.slice(0, L) };
 }

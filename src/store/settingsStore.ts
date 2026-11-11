@@ -34,6 +34,8 @@ interface SettingsState {
   removeTexture: (id: string) => void;
   /** Move a texture up (-1) or down (+1) in the layer order. */
   moveTexture: (id: string, dir: -1 | 1) => void;
+  /** put a texture at this position in the list (0 = applied first) */
+  moveTextureTo: (id: string, index: number) => void;
   resetPrint: () => void;
   /** Back to a fresh install: built-in profiles only, default print settings, no textures. */
   resetAll: () => void;
@@ -140,6 +142,16 @@ export const useSettingsStore = create<SettingsState>()(
           if (i < 0 || j < 0 || j >= s.textures.length) return s;
           const textures = [...s.textures];
           [textures[i], textures[j]] = [textures[j], textures[i]];
+          return { textures };
+        }),
+      moveTextureTo: (id, index) =>
+        set((s) => {
+          const i = s.textures.findIndex((t) => t.id === id);
+          const j = Math.max(0, Math.min(s.textures.length - 1, index));
+          if (i < 0 || i === j) return s;
+          const textures = [...s.textures];
+          const [t] = textures.splice(i, 1);
+          textures.splice(j, 0, t);
           return { textures };
         }),
       resetPrint: () => set({ print: { ...DEFAULT_PRINT }, textures: [] }),

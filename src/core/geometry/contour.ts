@@ -82,7 +82,8 @@ export function resample(
   p: Float64Array,
   seam: { i: number; u: number },
   N: number,
-): { xy: Float64Array; perimeter: number } {
+  flags?: Uint8Array,
+): { xy: Float64Array; perimeter: number; flag: Uint8Array } {
   const n = p.length / 2;
   const { i, u } = seam;
   const j = (i + 1) % n;
@@ -106,6 +107,7 @@ export function resample(
     cum[k] = cum[k - 1] + Math.hypot(px[k] - px[k - 1], py[k] - py[k - 1]);
   const perimeter = cum[m - 1];
   const out = new Float64Array(2 * N);
+  const flag = new Uint8Array(N);
   let seg = 1;
   for (let k = 0; k < N; k++) {
     const d = (perimeter * k) / N;
@@ -114,8 +116,10 @@ export function resample(
     const t = span > 1e-12 ? (d - cum[seg - 1]) / span : 0;
     out[2 * k] = px[seg - 1] + t * (px[seg] - px[seg - 1]);
     out[2 * k + 1] = py[seg - 1] + t * (py[seg] - py[seg - 1]);
+    // polyline segment `seg` lies on original segment i (first and last piece) or i + seg - 1
+    if (flags) flag[k] = flags[seg === 1 || seg === n + 1 ? i : (i + seg - 1) % n];
   }
-  return { xy: out, perimeter };
+  return { xy: out, perimeter, flag };
 }
 
 /** Outward unit normals for a counter-clockwise loop. */

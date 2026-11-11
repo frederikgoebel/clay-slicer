@@ -66,6 +66,9 @@ export function buildGcode(r: ToolpathResult, s: SliceSettings, name = 'model'):
 
   let lastF = -1;
   let lastFeature = -1;
+  let retracted = false;
+  const R = s.retractDistance;
+  const retractF = Math.round(s.retractSpeed * 60);
   for (let i = 1; i < r.count; i++) {
     if (i === r.pauseAt && s.pauseSeconds > 0) {
       const zPrev = xyz[3 * i - 1];
@@ -77,6 +80,28 @@ export function buildGcode(r: ToolpathResult, s: SliceSettings, name = 'model'):
       lastF = -1;
     }
     const f = r.feature[i];
+    if (R > 0 && f === FEATURE_TRAVEL && r.feature[i - 1] !== FEATURE_TRAVEL && !retracted) {
+      // pull the clay back before a travel move (short hops are not worth it)
+      let len = 0;
+      for (let j = i; j < r.count && r.feature[j] === FEATURE_TRAVEL; j++)
+        len += Math.hypot(
+          xyz[3 * j] - xyz[3 * j - 3],
+          xyz[3 * j + 1] - xyz[3 * j - 2],
+          xyz[3 * j + 2] - xyz[3 * j - 1],
+        );
+      if (len >= 3) {
+        e -= R;
+        out.push(`G1 E${e.toFixed(4)} F${retractF} ; retract`);
+        retracted = true;
+        lastF = -1;
+      }
+    }
+    if (retracted && f !== FEATURE_TRAVEL) {
+      e += R;
+      out.push(`G1 E${e.toFixed(4)} F${retractF} ; unretract`);
+      retracted = false;
+      lastF = -1;
+    }
     if (f !== lastFeature) {
       out.push(`;TYPE:${FEATURE_NAME[f] ?? 'WALL'}`);
       lastFeature = f;
@@ -98,7 +123,13 @@ export function buildGcode(r: ToolpathResult, s: SliceSettings, name = 'model'):
       // stand still and keep pushing clay: extrude the volume the nominal flow delivers in that time
       e += (s.extrusionRate * r.dwell[i]) / filamentArea;
       const eFeed = Math.round((s.extrusionRate / filamentArea) * 60);
-      out.push(`G1 E${e.toFixed(4)} F${eFeed} ; blob ${fmt(r.dwell[i])} s`);
+      if (r.lift[i] > 0) {
+        // rise slowly while extruding so the blob is not squashed, then come back down
+        const up = Math.min(s.buildHeight, z + r.lift[i]);
+        const zF = Math.max(1, Math.round(((up - z) / r.dwell[i]) * 60));
+        out.push(`G1 Z${fmt(up)} E${e.toFixed(4)} F${zF} ; blob ${fmt(r.dwell[i])} s, rising`);
+        out.push(`G1 Z${fmt(z)} F1500`);
+      } else out.push(`G1 E${e.toFixed(4)} F${eFeed} ; blob ${fmt(r.dwell[i])} s`);
       lastF = -1;
     }
   }

@@ -7,6 +7,8 @@
 export type Vec = [number, number];
 
 export interface ShapeSection {
+  /** stable identity of the section (set by the model store; used by the change history) */
+  id?: string;
   /** height, mm (the first section is always at 0) */
   z: number;
   /** outline vertices in the XY plane (top view), closed polygon */

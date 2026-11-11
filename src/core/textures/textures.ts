@@ -1,4 +1,5 @@
 import type { TextureLayer } from '../types';
+import { curveAt } from './curve';
 import { sampleImage, sampleMask } from './mask';
 
 export interface TexCtx {
@@ -14,6 +15,8 @@ export interface TexCtx {
   /** z above which textures may start (top of floor) */
   zStart: number;
   fadeIn: number;
+  /** layer height, mm */
+  lh: number;
   /** angle around the vertical axis 0..1, and height / model height 0..1, for painted masks */
   u: number;
   v: number;
@@ -51,8 +54,11 @@ function heightMask(l: TextureLayer, z: number, H: number): number {
   const zf = (l.from / 100) * H;
   const zt = (l.to / 100) * H;
   if (z < zf || z > zt) return 0;
-  const zs = Math.min(zt, Math.max(zf, ((l.solid ?? l.to) / 100) * H));
-  // full strength from `from` up to `solid`, then eases out to zero at `to`
+  // zero at `from`, eases in to full strength at `solidFrom`, holds until `solid`, eases out to
+  // zero at `to` (older saves have no fade handles: both then sit on the ends = hard edges)
+  const za = Math.min(zt, Math.max(zf, ((l.solidFrom ?? l.from) / 100) * H));
+  const zs = Math.min(zt, Math.max(za, ((l.solid ?? l.to) / 100) * H));
+  if (z < za) return za > zf ? smooth((z - zf) / (za - zf)) : 1;
   if (z <= zs || zt <= zs) return 1;
   return 1 - smooth((z - zs) / (zt - zs));
 }
@@ -72,8 +78,45 @@ function decalValue(l: TextureLayer, c: TexCtx): number {
   return l.invert ? 1 - g : g;
 }
 
+function blendInto(off: number, value: number, m: number, blend: TextureLayer['blend']): number {
+  if (blend === 'max') return off + (Math.max(off, value) - off) * m;
+  if (blend === 'replace') return off + (value - off) * m;
+  return off + value * m;
+}
+
+/** Outdent 0..1: the height curve across the texture's range times the curve around the object. */
+function ledgeValue(l: TextureLayer, c: TexCtx): number {
+  const zf = (l.from / 100) * c.H;
+  const zt = (l.to / 100) * c.H;
+  if (zt <= zf) return 0;
+  const n = Math.max(1, Math.round(l.repeatV ?? 1));
+  const s = Math.min(n - 1e-9, Math.max(0, ((c.z - zf) / (zt - zf)) * n));
+  const k = Math.floor(s);
+  const along = curveAt(l.curveV, s - k);
+  // each repeat in height is turned a little further around the object
+  const u = c.u + (k * (l.rotStep ?? 0)) / 360;
+  const f = (u * Math.max(1, l.count)) % 1;
+  return along * curveAt(l.curveA, f < 0 ? f + 1 : f);
+}
+
 /**
- * Total radial offset (mm, along the outward normal) from all non-twist layers.
+ * Sling 0..1: a triangular spike outward (the nozzle leaves the wall and comes back), in rows every
+ * `wavelength` mm, `count` per row, each row turned by `rotStep` degrees, `layersDown` consecutive
+ * layers drooping. `width` is its width along the wall in mm.
+ */
+function slingValue(l: TextureLayer, c: TexCtx): number {
+  if (l.count < 1 || l.width <= 0) return 0;
+  const down = Math.max(1, Math.round(l.layersDown ?? 1));
+  const every = Math.max(down, l.wavelength > 0 ? Math.round(l.wavelength / c.lh) : 1);
+  const layer = Math.floor(c.z / c.lh + 1e-6);
+  if (layer % every >= down) return 0; // only the first `down` layers of each row droop
+  const row = Math.floor(layer / every);
+  const f = l.count * (c.t + (row * (l.rotStep ?? 0)) / 360);
+  const arc = (f - Math.floor(f) - 0.5) * ((TAU * c.rad) / l.count);
+  return Math.max(0, 1 - Math.abs(arc) / (l.width / 2));
+}
+
+/** Total radial offset (mm, along the outward normal) from all non-twist layers.
  * Layers are applied in list order like image layers: each one blends onto the result so far,
  * weighted by its height range and its (painted, grayscale) mask.
  */
@@ -88,6 +131,12 @@ export function radialOffset(layers: TextureLayer[], c: TexCtx): number {
     if (l.mask) {
       m *= sampleMask(l.mask, c.u, c.v);
       if (m === 0) continue;
+    }
+    if (l.type === 'ledge' || l.type === 'sling') {
+      const value = l.amplitude * (l.type === 'ledge' ? ledgeValue(l, c) : slingValue(l, c));
+      if (value === 0) continue;
+      off = blendInto(off, value, m, l.blend);
+      continue;
     }
     const phase = l.count * c.t + (l.wavelength > 0 ? c.z / l.wavelength : 0);
     let v = 0;
@@ -114,17 +163,7 @@ export function radialOffset(layers: TextureLayer[], c: TexCtx): number {
         if (v < 0) continue;
         break;
     }
-    const value = l.amplitude * v;
-    switch (l.blend) {
-      case 'max':
-        off += (Math.max(off, value) - off) * m;
-        break;
-      case 'replace':
-        off += (value - off) * m;
-        break;
-      default:
-        off += value * m;
-    }
+    off = blendInto(off, l.amplitude * v, m, l.blend);
   }
   return off * gate;
 }
@@ -173,4 +212,11 @@ export function dwellSeconds(
       total += l.amplitude * m;
   }
   return total;
+}
+
+/** How far the nozzle rises (mm) while standing still extruding a blob. */
+export function blobLift(layers: TextureLayer[]): number {
+  let lift = 0;
+  for (const l of layers) if (l.enabled && l.type === 'blobs') lift = Math.max(lift, l.lift ?? 0);
+  return lift;
 }

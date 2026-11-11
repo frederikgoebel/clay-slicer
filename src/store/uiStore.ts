@@ -26,6 +26,8 @@ interface UiState {
   shapeVertex: number;
   showHandles: boolean;
   paint: PaintState;
+  /** texture cards that are folded up (by texture id) */
+  collapsedTex: Record<string, boolean>;
 
   setView: (v: ViewMode) => void;
   setColorMode: (v: ColorMode) => void;
@@ -35,6 +37,7 @@ interface UiState {
   setShapeVertex: (i: number) => void;
 
   setShowHandles: (v: boolean) => void;
+  setTexCollapsed: (id: string, collapsed: boolean) => void;
   /** Start/stop painting a texture. Painting needs the model visible. */
   setPaintTexture: (id: string | null) => void;
   patchPaint: (patch: Partial<Omit<PaintState, 'textureId'>>) => void;
@@ -49,6 +52,7 @@ export const useUiStore = create<UiState>()((set) => ({
   shapeVertex: 0,
   showHandles: true,
   paint: { textureId: null, erase: false, radius: 12, hardness: 55, opacity: 100 },
+  collapsedTex: {},
 
   setView: (view) => set({ view }),
   setColorMode: (colorMode) => set({ colorMode }),
@@ -57,6 +61,8 @@ export const useUiStore = create<UiState>()((set) => ({
   setShapeSection: (shapeSection) => set({ shapeSection, shapeVertex: 0 }),
   setShapeVertex: (shapeVertex) => set({ shapeVertex }),
   setShowHandles: (showHandles) => set({ showHandles }),
+  setTexCollapsed: (id, collapsed) =>
+    set((s) => ({ collapsedTex: { ...s.collapsedTex, [id]: collapsed } })),
   setPaintTexture: (textureId) =>
     set((s) => ({
       paint: { ...s.paint, textureId },

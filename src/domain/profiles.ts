@@ -74,7 +74,7 @@ const clay = (p: Omit<ClayProfile, 'builtin'>): ClayProfile => ({ ...p, builtin:
 const PRINTER_BASE = {
   travelSpeed: 100,
   flowFollowsSpeedPct: 25,
-  eDia: 1.75,
+  eDia: 4.5,
   primeE: 0,
   startDwell: 0,
   startGcode: START_GCODE,
@@ -120,19 +120,19 @@ export const BUILTIN_PROFILES: ProfileLists = {
       tankCm3: 2000,
     }),
   ],
-  // rates chosen so that, at 30 mm/s, the calculated bead is about 1.15-1.9x the layer height
+  // rates chosen so that, at 35 mm/s, the calculated bead is about 1.15-1.9x the layer height
   nozzle: [
-    nozzle({ id: 'nozzle-2', name: '2 mm', diameter: 2, layerHeight: 1.1, extrusionRate: 4.1 }),
-    nozzle({ id: 'nozzle-3', name: '3 mm', diameter: 3, layerHeight: 1.8, extrusionRate: 10.1 }),
-    nozzle({ id: 'nozzle-4', name: '4 mm', diameter: 4, layerHeight: 2.4, extrusionRate: 17.6 }),
-    nozzle({ id: 'nozzle-6', name: '6 mm', diameter: 6, layerHeight: 3.6, extrusionRate: 39 }),
+    nozzle({ id: 'nozzle-2', name: '2 mm', diameter: 2, layerHeight: 1, extrusionRate: 4.4 }),
+    nozzle({ id: 'nozzle-3', name: '3 mm', diameter: 3, layerHeight: 1.8, extrusionRate: 11.8 }),
+    nozzle({ id: 'nozzle-4', name: '4 mm', diameter: 4, layerHeight: 2.4, extrusionRate: 20.5 }),
+    nozzle({ id: 'nozzle-6', name: '6 mm', diameter: 6, layerHeight: 3.6, extrusionRate: 45.5 }),
   ],
   clay: [
     clay({
       id: 'clay-stoneware',
       color: '#a8957f',
       name: 'Stoneware',
-      printSpeed: 30,
+      printSpeed: 35,
       flow: 100,
       minLayerTime: 0,
       density: 1.9,
@@ -180,6 +180,11 @@ export function resolveSliceSettings(
     segLen: print.segLen,
     seamAngle: print.seamAngle,
     topFinish: print.topFinish,
+    topCurves: print.topCurves,
+    topAngle: print.topAngle,
+    retractDistance: print.retractDistance,
+    retractSpeed: print.retractSpeed,
+    zHop: print.zHop,
     floorLayers: print.floorLayers,
     floorSpacingPct: print.floorSpacingPct,
     floorBelow: print.floorBelow,

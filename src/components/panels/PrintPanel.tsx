@@ -1,19 +1,7 @@
-import type { FloorPattern, PrintMode } from '../../core/types';
 import { useSettingsStore } from '../../store/settingsStore';
+import { FLOOR_PATTERNS, MODES, PRINT_FIELDS as F, TOP_CURVES } from '../../domain/printLabels';
 import { SelectField, Section, Toggle } from '../ui/controls';
 import { Slider } from '../ui/Slider';
-
-const MODES: readonly (readonly [PrintMode, string])[] = [
-  ['spiral', 'Spiral (vase mode)'],
-  ['layered', 'Layered rings'],
-];
-
-const FLOOR_PATTERNS: readonly (readonly [FloorPattern, string])[] = [
-  ['spiral', 'Spiral'],
-  ['insets', 'Inset curves (concentric)'],
-  ['lines', 'Lines (turn 90° each layer)'],
-  ['grid', 'Grid (both directions each layer)'],
-];
 
 export function PrintPanel() {
   const print = useSettingsStore((s) => s.print);
@@ -22,13 +10,13 @@ export function PrintPanel() {
     <>
       <Section title="Print" defaultOpen>
         <SelectField
-          label="Mode"
+          label={F.mode.label}
           value={print.mode}
           options={MODES}
           onChange={(mode) => setPrint({ mode })}
         />
         <Slider
-          label="Start angle"
+          label={F.seamAngle.label}
           value={print.seamAngle}
           min={0}
           max={359}
@@ -38,7 +26,7 @@ export function PrintPanel() {
           onChange={(seamAngle) => setPrint({ seamAngle })}
         />
         <Slider
-          label="Path resolution"
+          label={F.segLen.label}
           value={print.segLen}
           min={0.5}
           max={6}
@@ -48,14 +36,65 @@ export function PrintPanel() {
           onChange={(segLen) => setPrint({ segLen })}
         />
         <Toggle
-          label="Flat finishing ring at the top"
+          label={F.topFinish.label}
           checked={print.topFinish}
           onChange={(topFinish) => setPrint({ topFinish })}
+        />
+        <SelectField
+          label={F.topCurves.label}
+          value={print.topCurves}
+          options={TOP_CURVES}
+          onChange={(topCurves) => setPrint({ topCurves })}
+        />
+        {print.topCurves === 'open' && (
+          <Slider
+            label={F.topAngle.label}
+            value={print.topAngle}
+            min={5}
+            max={80}
+            step={1}
+            unit={F.topAngle.unit}
+            hint="Surfaces tilted up to this much from flat count as the top (the opening) and are not printed. Use for a slanted or curved rim."
+            onChange={(topAngle) => setPrint({ topAngle })}
+          />
+        )}
+      </Section>
+      <Section title="Travel moves">
+        <Slider
+          label={F.retractDistance.label}
+          value={print.retractDistance}
+          min={0}
+          max={10}
+          step={0.5}
+          unit={F.retractDistance.unit}
+          hint="Clay pulled back (E axis) before a travel move and pushed forward again after it. 0 = off."
+          onChange={(retractDistance) => setPrint({ retractDistance })}
+        />
+        {print.retractDistance > 0 && (
+          <Slider
+            label={F.retractSpeed.label}
+            value={print.retractSpeed}
+            min={2}
+            max={60}
+            step={1}
+            unit={F.retractSpeed.unit}
+            onChange={(retractSpeed) => setPrint({ retractSpeed })}
+          />
+        )}
+        <Slider
+          label={F.zHop.label}
+          value={print.zHop}
+          min={0}
+          max={30}
+          step={1}
+          unit={F.zHop.unit}
+          hint="The nozzle rises this much while it travels between lines or curves."
+          onChange={(zHop) => setPrint({ zHop })}
         />
       </Section>
       <Section title="Floor">
         <Slider
-          label="Floor layers"
+          label={F.floorLayers.label}
           value={print.floorLayers}
           min={0}
           max={10}
@@ -65,7 +104,7 @@ export function PrintPanel() {
         />
         {print.floorLayers > 0 && (
           <SelectField
-            label="Pattern"
+            label={F.floorPattern.label}
             value={print.floorPattern}
             options={FLOOR_PATTERNS}
             onChange={(floorPattern) => setPrint({ floorPattern })}
@@ -73,7 +112,7 @@ export function PrintPanel() {
         )}
         {print.floorLayers > 0 && print.floorPattern !== 'spiral' && (
           <Slider
-            label="Line angle"
+            label={F.floorAngle.label}
             value={print.floorAngle}
             min={0}
             max={90}
@@ -83,24 +122,24 @@ export function PrintPanel() {
           />
         )}
         <Slider
-          label="Line spacing"
+          label={F.floorSpacingPct.label}
           value={print.floorSpacingPct}
           min={50}
           max={200}
           step={1}
-          unit="% of width"
+          unit={F.floorSpacingPct.unit}
           onChange={(floorSpacingPct) => setPrint({ floorSpacingPct })}
         />
         {print.floorLayers > 0 && (
           <Toggle
-            label="Print the floor below the model"
+            label={F.floorBelow.label}
             checked={print.floorBelow}
             onChange={(floorBelow) => setPrint({ floorBelow })}
           />
         )}
         {print.floorLayers > 0 && (
           <Toggle
-            label="Pause after the floor"
+            label={F.pauseAfterFloor.label}
             checked={print.pauseAfterFloor}
             onChange={(pauseAfterFloor) => setPrint({ pauseAfterFloor })}
           />
@@ -108,7 +147,7 @@ export function PrintPanel() {
         {print.floorLayers > 0 && print.pauseAfterFloor && (
           <>
             <Slider
-              label="Dwell time"
+              label={F.pauseSeconds.label}
               value={print.pauseSeconds}
               min={1}
               max={300}
@@ -117,7 +156,7 @@ export function PrintPanel() {
               onChange={(pauseSeconds) => setPrint({ pauseSeconds })}
             />
             <Slider
-              label="Lift during pause"
+              label={F.pauseLift.label}
               value={print.pauseLift}
               min={0}
               max={800}

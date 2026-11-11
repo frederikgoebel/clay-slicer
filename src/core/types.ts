@@ -3,7 +3,10 @@
  * Nothing in `src/core` may import from React, three.js or the stores.
  */
 
-export type TextureType = 'fuzzy' | 'wave' | 'zigzag' | 'ribs' | 'twist' | 'blobs' | 'decal';
+import type { CurvePoint } from './textures/curve';
+
+export type TextureType =
+  'fuzzy' | 'wave' | 'zigzag' | 'ribs' | 'twist' | 'blobs' | 'decal' | 'ledge' | 'sling';
 
 /** How a texture layer combines with the layers before it. */
 export type BlendMode = 'add' | 'max' | 'replace';
@@ -32,6 +35,8 @@ export interface TextureLayer {
   /** height range the texture applies to, % of model height */
   from: number;
   to: number;
+  /** height (% of model) where the texture reaches full strength (it fades in from `from`) */
+  solidFrom: number;
   /** height (% of model) up to which the texture is at full strength; it fades out from here to `to` */
   solid: number;
   /** add: sum with earlier layers; max: the higher of the two wins; replace: overrides them */
@@ -42,6 +47,18 @@ export interface TextureLayer {
   width: number;
   hgt: number;
   rot: number;
+  /** outdent: how far out it goes over the texture's height range (x = height, y = outdent) */
+  curveV?: CurvePoint[];
+  /** outdent: strength around the object (x = angle 0..1 from +X, y = outdent) */
+  curveA?: CurvePoint[];
+  /** outdent: how often the height curve repeats within the height range */
+  repeatV?: number;
+  /** outdent / sling: degrees each repeat (outdent) or row (sling) is rotated further around */
+  rotStep?: number;
+  /** sling: how many consecutive layers droop */
+  layersDown?: number;
+  /** blobs: mm the nozzle rises while it extrudes a blob (0 = stands still) */
+  lift?: number;
   /** decal: bright = engraved instead of raised */
   invert: boolean;
   /** decal image (grayscale, 0..255); lives in the image store, not persisted */
@@ -50,7 +67,11 @@ export interface TextureLayer {
   mask?: Mask | null;
 }
 
-export type PrintMode = 'spiral' | 'layered';
+/** spiral: one continuous vase spiral; layered: closed rings; normal: every curve of every layer, with travel moves and retraction */
+export type PrintMode = 'spiral' | 'layered' | 'normal';
+
+/** Where the top surface is not flat: close each layer's curve across the cut, or keep open lines */
+export type TopCurves = 'closed' | 'open';
 
 /** Everything the pipeline needs, flattened from printer + nozzle + clay profiles + print settings. */
 export interface SliceSettings {
@@ -85,6 +106,16 @@ export interface SliceSettings {
   segLen: number;
   seamAngle: number;
   topFinish: boolean;
+  /** objects whose top is not flat: closed curves (as sliced) or open lines on the outside */
+  topCurves: TopCurves;
+  /** faces whose normal is within this many degrees of vertical count as top surface (open lines) */
+  topAngle: number;
+  /** mm of extruder (E) pulled back before a travel move; 0 = no retraction */
+  retractDistance: number;
+  /** mm/s */
+  retractSpeed: number;
+  /** mm the nozzle rises during a travel move */
+  zHop: number;
   floorLayers: number;
   floorSpacingPct: number;
   floorPattern: FloorPattern;
@@ -149,6 +180,8 @@ export interface ToolpathResult {
   overhang: Float32Array;
   /** seconds the nozzle stands still extruding at each point (blobs), 0 = moving */
   dwell: Float32Array;
+  /** mm the nozzle rises while standing still at a dwell point */
+  lift: Float32Array;
   /** index of the point the pause after the floor comes before, -1 = no pause */
   pauseAt: number;
   stats: ToolpathStats;

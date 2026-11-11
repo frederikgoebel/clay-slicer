@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { uid } from '../domain/print';
 import { defaultShape, shapeMesh, type ShapeSpec } from '../core/shape/shape';
 
 export type ModelSource = 'stl' | 'design';
@@ -26,6 +27,12 @@ interface ModelState {
   setError: (message: string | null) => void;
 }
 
+/** Every section gets a stable id the first time it is stored (edits keep it). */
+const withIds = (shape: ShapeSpec): ShapeSpec =>
+  shape.sections.every((s) => s.id)
+    ? shape
+    : { ...shape, sections: shape.sections.map((s) => (s.id ? s : { ...s, id: uid() })) };
+
 export const useModelStore = create<ModelState>()((set) => ({
   source: 'stl',
   raw: null,
@@ -43,21 +50,27 @@ export const useModelStore = create<ModelState>()((set) => ({
       loadCount: s.loadCount + 1,
       error: null,
     })),
-  setShape: (shape, name = 'design') =>
-    set((s) => ({
-      source: 'design',
-      raw: shapeMesh(shape),
-      name,
-      shape,
-      loadCount: s.loadCount + 1,
-      error: null,
-    })),
-  updateShape: (shape) => set({ raw: shapeMesh(shape), shape }),
+  setShape: (input, name = 'design') =>
+    set((s) => {
+      const shape = withIds(input);
+      return {
+        source: 'design',
+        raw: shapeMesh(shape),
+        name,
+        shape,
+        loadCount: s.loadCount + 1,
+        error: null,
+      };
+    }),
+  updateShape: (input) => {
+    const shape = withIds(input);
+    set({ raw: shapeMesh(shape), shape });
+  },
   setSource: (source) =>
     set((s) => {
       if (source === s.source) return s;
       if (source === 'design') {
-        const shape = s.shape ?? defaultShape();
+        const shape = withIds(s.shape ?? defaultShape());
         return { source, shape, raw: shapeMesh(shape), name: 'design', loadCount: s.loadCount + 1 };
       }
       return {

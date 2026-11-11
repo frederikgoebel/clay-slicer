@@ -43,7 +43,16 @@ export function computeStats(
       timeS += dwell[i];
       volMm3 += s.extrusionRate * dwell[i];
     }
-    if (i === 0 || feature[i] === FEATURE_TRAVEL) continue;
+    if (i === 0) continue;
+    if (feature[i] === FEATURE_TRAVEL) {
+      timeS +=
+        Math.hypot(
+          xyz[3 * i] - xyz[3 * i - 3],
+          xyz[3 * i + 1] - xyz[3 * i - 2],
+          xyz[3 * i + 2] - xyz[3 * i - 1],
+        ) / s.travelSpeed;
+      continue;
+    }
     const len = Math.hypot(
       xyz[3 * i] - xyz[3 * i - 3],
       xyz[3 * i + 1] - xyz[3 * i - 2],

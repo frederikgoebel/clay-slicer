@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { openFile } from './actions/projectActions';
 import styles from './components/layout/layout.module.css';
 import { LayerBar } from './components/layout/LayerBar';
+import { UnitsDialog } from './components/layout/UnitsDialog';
 import { Welcome } from './components/layout/Welcome';
 import { Dock } from './components/layout/Dock';
 import { FloatingLayer } from './components/layout/FloatingLayer';
@@ -12,17 +13,22 @@ import { Viewport } from './components/viewport/Viewport';
 import { useMesh } from './hooks/useMesh';
 import { useSliceSettings } from './hooks/useProfiles';
 import { useSlicer } from './hooks/useSlicer';
+import { useMeshStore } from './store/meshStore';
 import { useModelStore } from './store/modelStore';
+import { redo, startHistory, undo } from './store/historyStore';
 import { useSliceStore } from './store/sliceStore';
+import { useUnitsStore } from './store/unitsStore';
 import { useUiStore } from './store/uiStore';
 
 export default function App() {
   const mesh = useMesh();
   const settings = useSliceSettings();
   useSlicer(mesh, settings);
+  useEffect(() => useMeshStore.setState({ mesh }), [mesh]);
 
   const modelError = useModelStore((s) => s.error);
   const busy = useSliceStore((s) => s.status === 'busy');
+  const unitsPending = useUnitsStore((s) => s.pending !== null);
   const paintId = useUiStore((s) => s.paint.textureId);
 
   const meshRadius = useMemo(() => {
@@ -31,6 +37,28 @@ export default function App() {
       for (let i = 0; i < mesh.length; i += 3) r = Math.max(r, Math.hypot(mesh[i], mesh[i + 1]));
     return r;
   }, [mesh]);
+
+  // undo / redo: record changes from the start, Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z (or Ctrl+Y)
+  useEffect(() => {
+    startHistory();
+    const key = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.isContentEditable || t?.tagName === 'TEXTAREA') return;
+      if (t instanceof HTMLInputElement && ['text', 'search', 'email'].includes(t.type)) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+      } else if (k === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, []);
 
   // drag & drop an STL anywhere on the page
   useEffect(() => {
@@ -64,7 +92,8 @@ export default function App() {
           {modelError && (
             <div className={`${styles.card} ${styles.warn} ${styles.bad}`}>{modelError}</div>
           )}
-          {!mesh && <Welcome />}
+          {!mesh && !unitsPending && <Welcome />}
+          <UnitsDialog />
           <LayerBar />
         </main>
         <Dock side="right" />

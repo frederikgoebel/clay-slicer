@@ -13,7 +13,26 @@ function key(x: number, y: number): number {
   return (Math.round(x * Q) + OFF) * 8388608 + (Math.round(y * Q) + OFF);
 }
 
+/** A sliced loop; `cap[i]` = 1 when the segment from vertex i to i+1 lies on an upward-facing surface. */
+export interface FlaggedLoop {
+  xy: Float64Array;
+  cap: Uint8Array;
+}
+
 export function sliceLayers(pos: Float32Array, h: number, nLayers: number): Float64Array[][] {
+  return sliceLayersFlagged(pos, h, nLayers, 2).map((l) => l.map((x) => x.xy));
+}
+
+/**
+ * Like `sliceLayers`, and marks the segments cut from triangles that face up within the given
+ * cosine of vertical (`capCos` > 1 marks nothing). That is how a slanted or curved top is found.
+ */
+export function sliceLayersFlagged(
+  pos: Float32Array,
+  h: number,
+  nLayers: number,
+  capCos: number,
+): FlaggedLoop[][] {
   const nt = pos.length / 9;
   const buckets: number[][] = Array.from({ length: nLayers }, () => []);
   for (let t = 0; t < nt; t++) {
@@ -28,16 +47,17 @@ export function sliceLayers(pos: Float32Array, h: number, nLayers: number): Floa
     const j1 = Math.min(nLayers - 1, Math.floor(zmax / h - 0.5));
     for (let j = j0; j <= j1; j++) buckets[j].push(t);
   }
-  return buckets.map((tris, j) => sliceOne(pos, tris, (j + 0.5) * h));
+  return buckets.map((tris, j) => sliceOne(pos, tris, (j + 0.5) * h, capCos));
 }
 
-function sliceOne(pos: Float32Array, tris: number[], z: number): Float64Array[] {
+function sliceOne(pos: Float32Array, tris: number[], z: number, capCos: number): FlaggedLoop[] {
   const sx0: number[] = [];
   const sy0: number[] = [];
   const sx1: number[] = [];
   const sy1: number[] = [];
   const k0: number[] = [];
   const k1: number[] = [];
+  const cp: number[] = [];
   const vx = [0, 0, 0];
   const vy = [0, 0, 0];
   const vz = [0, 0, 0];
@@ -86,6 +106,8 @@ function sliceOne(pos: Float32Array, tris: number[], z: number): Float64Array[] 
     const e2z = vz[2] - vz[0];
     const nx = e1y * e2z - e1z * e2y;
     const ny = e1z * e2x - e1x * e2z;
+    const nzc = e1x * e2y - e1y * e2x;
+    const nl = Math.hypot(nx, ny, nzc);
     let [px, py, qx, qy] = pts;
     if ((qx - px) * -ny + (qy - py) * nx < 0) [px, py, qx, qy] = [qx, qy, px, py];
     const ka = key(px, py);
@@ -97,22 +119,25 @@ function sliceOne(pos: Float32Array, tris: number[], z: number): Float64Array[] 
     sy1.push(qy);
     k0.push(ka);
     k1.push(kb);
+    cp.push(nzc > 0 && nzc >= capCos * nl ? 1 : 0);
   }
 
   const n = k0.length;
   const startMap = new Map<number, number>();
   for (let i = 0; i < n; i++) startMap.set(k0[i], i);
   const used = new Uint8Array(n);
-  const loops: Float64Array[] = [];
+  const loops: FlaggedLoop[] = [];
   for (let i = 0; i < n; i++) {
     if (used[i]) continue;
     const loop: number[] = [];
+    const flags: number[] = [];
     const startKey = k0[i];
     let cur = i;
     let closed = false;
     for (;;) {
       used[cur] = 1;
       loop.push(sx0[cur], sy0[cur]);
+      flags.push(cp[cur]);
       const nk = k1[cur];
       if (nk === startKey) {
         closed = true;
@@ -122,7 +147,8 @@ function sliceOne(pos: Float32Array, tris: number[], z: number): Float64Array[] 
       if (nxt === undefined || used[nxt]) break;
       cur = nxt;
     }
-    if (closed && loop.length >= 6) loops.push(Float64Array.from(loop));
+    if (closed && loop.length >= 6)
+      loops.push({ xy: Float64Array.from(loop), cap: Uint8Array.from(flags) });
   }
   return loops;
 }

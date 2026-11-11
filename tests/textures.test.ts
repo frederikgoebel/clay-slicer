@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createMask, sampleMask, Stroke } from '../src/core/textures/mask';
-import { radialOffset, type TexCtx } from '../src/core/textures/textures';
+import { blobLift, radialOffset, type TexCtx } from '../src/core/textures/textures';
 import { runPipeline } from '../src/core/toolpath/pipeline';
 import type { Mask, TextureLayer } from '../src/core/types';
-import { newTexture } from '../src/domain/print';
+import { ONE_SIDE, BRIDGE_BACK, newTexture } from '../src/domain/print';
 import { cylinder, testSettings } from './helpers';
 
 const ctx = (o: Partial<TexCtx> = {}): TexCtx => ({
@@ -14,6 +14,7 @@ const ctx = (o: Partial<TexCtx> = {}): TexCtx => ({
   spacing: 1.5,
   zStart: 0,
   fadeIn: 0,
+  lh: 2,
   u: 0.5,
   v: 0.5,
   ang: 0,
@@ -24,6 +25,7 @@ const tex = (type: TextureLayer['type'], o: Partial<TextureLayer> = {}): Texture
   ...newTexture(type),
   from: 0,
   to: 100,
+  solidFrom: 0,
   solid: 100,
   ...o,
 });
@@ -101,5 +103,59 @@ describe('decal', () => {
       max = Math.max(max, Math.hypot(b.xyz[3 * i], b.xyz[3 * i + 1]) - 20);
     expect(max).toBeGreaterThan(2.5);
     expect(b.stats.lengthMm).toBeGreaterThan(a.stats.lengthMm);
+  });
+});
+
+describe('ledge, sling and blob lift', () => {
+  it('outdent follows the height curve and the curve around the object', () => {
+    const l = tex('ledge', { amplitude: 10, from: 0, to: 100, count: 1 });
+    const at = (z: number, u = 0.5) => radialOffset([l], ctx({ z, H: 60, u }));
+    expect(at(0)).toBeCloseTo(0, 5);
+    expect(at(15)).toBeCloseTo(5, 5); // halfway up the ramp
+    expect(at(30)).toBeCloseTo(10, 5); // peak
+    expect(at(45)).toBeCloseTo(5, 5); // closing slowly
+    const bridge = tex('ledge', { amplitude: 10, curveV: BRIDGE_BACK, count: 1 });
+    expect(radialOffset([bridge], ctx({ z: 59.5, H: 60 }))).toBeLessThan(5);
+    expect(radialOffset([bridge], ctx({ z: 55, H: 60 }))).toBeGreaterThan(8);
+    const side = tex('ledge', { amplitude: 10, curveA: ONE_SIDE, count: 1 });
+    expect(radialOffset([side], ctx({ z: 30, H: 60, u: 0.5 }))).toBeCloseTo(10, 5);
+    expect(radialOffset([side], ctx({ z: 30, H: 60, u: 0.1 }))).toBeCloseTo(0, 5);
+  });
+  it('a sling is a spike on one layer per row', () => {
+    const l = tex('sling', { amplitude: 12, count: 4, wavelength: 20, width: 10 });
+    const at = (z: number, t: number) => radialOffset([l], ctx({ z, H: 60, t, rad: 20, lh: 2 }));
+    expect(at(0, 0.125)).toBeCloseTo(12, 5); // centre of the first spike (t*4 = .5), row 0
+    expect(at(0, 0.2)).toBe(0); // beside the spike
+    expect(at(2, 0.125)).toBe(0); // other layer
+  });
+  it('repeats the outdent in height and turns each repeat', () => {
+    const l = tex('ledge', { amplitude: 10, from: 0, to: 100, count: 4, repeatV: 3, rotStep: 45 });
+    const at = (z: number, u: number) => radialOffset([l], ctx({ z, H: 60, u }));
+    expect(at(10, 0.5)).toBeCloseTo(10, 5); // peak of repeat 1 (z 0..20)
+    expect(at(30, 0.5)).toBeCloseTo(10, 5); // peak of repeat 2
+    expect(at(20, 0.5)).toBeCloseTo(0, 5); // between repeats it closes
+    const side = { ...l, curveA: ONE_SIDE, rotStep: 90 }; // 90 deg = one period of 4 around
+    expect(radialOffset([side], ctx({ z: 30, H: 60, u: 0.5 }))).toBeCloseTo(0, 5);
+    expect(radialOffset([side], ctx({ z: 10, H: 60, u: 0.125 }))).toBeCloseTo(10, 5);
+  });
+  it('slings droop over several layers and each row turns', () => {
+    const l = tex('sling', {
+      amplitude: 12,
+      count: 4,
+      wavelength: 20,
+      width: 10,
+      layersDown: 3,
+      rotStep: 45,
+    });
+    const at = (z: number, t: number) => radialOffset([l], ctx({ z, H: 60, t, rad: 20, lh: 2 }));
+    expect(at(0, 0.125)).toBeCloseTo(12, 5);
+    expect(at(4, 0.125)).toBeCloseTo(12, 5); // third layer still droops
+    expect(at(6, 0.125)).toBe(0); // fourth does not
+    expect(at(20, 0.125)).toBeCloseTo(0, 5); // next row is turned by 45 deg
+    expect(at(20, 0.125 + 45 / 360)).toBeCloseTo(12, 5);
+  });
+  it('lifts the nozzle while a blob is made', () => {
+    expect(blobLift([tex('blobs', { lift: 2.5 }), tex('wave')])).toBe(2.5);
+    expect(blobLift([tex('blobs')])).toBe(0);
   });
 });

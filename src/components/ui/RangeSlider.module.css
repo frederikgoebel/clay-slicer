@@ -16,7 +16,7 @@
 
 .track {
   position: relative;
-  height: 22px;
+  height: 42px;
   touch-action: none;
   user-select: none;
 }
@@ -36,6 +36,13 @@
   top: 8px;
   height: 6px;
   background: var(--accent);
+}
+
+.fadeIn {
+  position: absolute;
+  top: 8px;
+  height: 6px;
+  background: linear-gradient(to left, var(--accent), transparent);
 }
 
 .fade {
@@ -67,7 +74,7 @@
   border-radius: 50%;
   width: 14px;
   height: 14px;
-  top: 4px;
+  top: 26px;
 }
 
 .legend {
@@ -75,4 +82,23 @@
   justify-content: space-between;
   color: var(--dim);
   font-size: 11px;
+}
+
+.name {
+  color: var(--dim);
+  margin-bottom: 14px;
+}
+
+.tip {
+  position: absolute;
+  top: -22px;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 5px;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
 }

@@ -9,6 +9,7 @@ export class PathBuilder {
   readonly width: number[] = [];
   readonly overhang: number[] = [];
   readonly dwell: number[] = [];
+  readonly lift: number[] = [];
 
   /** index of the first point after the floor, where an optional pause goes; -1 = none */
   pauseAt = -1;
@@ -39,6 +40,7 @@ export class PathBuilder {
     speed: number,
     overhang = 0,
     dwell = 0,
+    lift = 0,
   ): void {
     this.xyz.push(x, y, z);
     this.feature.push(feature);
@@ -46,5 +48,6 @@ export class PathBuilder {
     this.width.push(this.widthAt(speed));
     this.overhang.push(overhang);
     this.dwell.push(dwell);
+    this.lift.push(lift);
   }
 }

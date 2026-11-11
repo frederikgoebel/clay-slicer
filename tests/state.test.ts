@@ -49,7 +49,7 @@ describe('profile store', () => {
     expect(forked.printSpeed).toBe(42);
     expect(st.profiles.clay.length).toBe(BUILTIN_PROFILES.clay.length + 1);
     // the built-in is untouched
-    expect(BUILTIN_PROFILES.clay[0].printSpeed).toBe(30);
+    expect(BUILTIN_PROFILES.clay[0].printSpeed).toBe(35);
 
     st.patchProfile('clay', { flow: 110 });
     st = useSettingsStore.getState();

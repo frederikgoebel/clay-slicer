@@ -1,4 +1,5 @@
-import type { FloorPattern, PrintMode, TextureLayer, TextureType } from '../core/types';
+import type { CurvePoint } from '../core/textures/curve';
+import type { FloorPattern, PrintMode, TopCurves, TextureLayer, TextureType } from '../core/types';
 
 /** Settings that belong to one print rather than to a machine, nozzle or clay. */
 export interface PrintSettings {
@@ -10,6 +11,15 @@ export interface PrintSettings {
   segLen: number;
   seamAngle: number;
   topFinish: boolean;
+  topCurves: TopCurves;
+  /** degrees from vertical below which a face counts as top surface */
+  topAngle: number;
+  /** mm of E pulled back before travel moves (0 = off) */
+  retractDistance: number;
+  /** mm/s */
+  retractSpeed: number;
+  /** mm the nozzle rises on travel moves */
+  zHop: number;
   floorLayers: number;
   floorSpacingPct: number;
   floorPattern: FloorPattern;
@@ -32,12 +42,17 @@ export const DEFAULT_PRINT: PrintSettings = {
   segLen: 1.5,
   seamAngle: 0,
   topFinish: true,
+  topCurves: 'closed',
+  topAngle: 35,
+  retractDistance: 3,
+  retractSpeed: 20,
+  zHop: 5,
   floorLayers: 2,
   floorSpacingPct: 140,
   floorPattern: 'spiral',
   floorAngle: 45,
   floorBelow: false,
-  pauseAfterFloor: false,
+  pauseAfterFloor: true,
   pauseSeconds: 20,
   pauseLift: 300,
   textureFadeIn: 6,
@@ -52,8 +67,39 @@ export const TEXTURE_NAMES: Record<TextureType, string> = {
   ribs: 'Ribs / fluting',
   twist: 'Twist',
   blobs: 'Clay blobs',
+  ledge: 'Outdents (ledges)',
+  sling: 'Slings (drooping loops)',
   decal: 'Decal (image)',
 };
+
+/** Outdent presets: out layer by layer, then back in slowly or in one go (bridging the gap). */
+export const CLOSE_SLOWLY: CurvePoint[] = [
+  [0, 0],
+  [0.5, 1],
+  [1, 0],
+];
+export const BRIDGE_BACK: CurvePoint[] = [
+  [0, 0],
+  [0.96, 1],
+  [1, 0],
+];
+/** Outdent that goes out and stays out until the end of the range. */
+export const STAY_OPEN: CurvePoint[] = [
+  [0, 0],
+  [0.6, 1],
+  [1, 1],
+];
+export const ALL_AROUND: CurvePoint[] = [
+  [0, 1],
+  [1, 1],
+];
+export const ONE_SIDE: CurvePoint[] = [
+  [0, 0],
+  [0.35, 0],
+  [0.5, 1],
+  [0.65, 0],
+  [1, 0],
+];
 
 export function newTexture(type: TextureType): TextureLayer {
   const base: TextureLayer = {
@@ -66,6 +112,7 @@ export function newTexture(type: TextureType): TextureLayer {
     seed: 1,
     from: 0,
     to: 100,
+    solidFrom: 0,
     solid: 100,
     blend: 'add',
     angle: 0,
@@ -89,6 +136,30 @@ export function newTexture(type: TextureType): TextureLayer {
     case 'decal':
       return { ...base, amplitude: 1.5 };
     case 'blobs':
-      return { ...base, amplitude: 1.5, count: 12, wavelength: 8 };
+      return { ...base, amplitude: 1.5, count: 12, wavelength: 8, lift: 0 };
+    case 'ledge':
+      return {
+        ...base,
+        amplitude: 6,
+        count: 1,
+        from: 40,
+        to: 60,
+        solidFrom: 40,
+        solid: 60,
+        repeatV: 1,
+        rotStep: 0,
+        curveV: [...CLOSE_SLOWLY],
+        curveA: [...ALL_AROUND],
+      };
+    case 'sling':
+      return {
+        ...base,
+        amplitude: 15,
+        count: 6,
+        wavelength: 20,
+        width: 10,
+        layersDown: 1,
+        rotStep: 15,
+      };
   }
 }

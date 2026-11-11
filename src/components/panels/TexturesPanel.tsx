@@ -1,64 +1,26 @@
 import type { BlendMode, TextureLayer, TextureType } from '../../core/types';
-import { TEXTURE_NAMES } from '../../domain/print';
-import { useId } from 'react';
+import { PRINT_FIELDS as F } from '../../domain/printLabels';
+import { BLENDS, FIELDS } from '../../domain/textureFields';
+import {
+  ALL_AROUND,
+  BRIDGE_BACK,
+  CLOSE_SLOWLY,
+  ONE_SIDE,
+  STAY_OPEN,
+  TEXTURE_NAMES,
+} from '../../domain/print';
+import { useId, useState, type DragEvent } from 'react';
 import { loadDecalImage } from '../../actions/decalActions';
 import { useImageStore } from '../../store/imageStore';
 import { useMaskStore } from '../../store/maskStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useUiStore } from '../../store/uiStore';
 import { Button, Section, Segmented, SelectField, Toggle } from '../ui/controls';
+import { TextureThumb } from './TextureThumb';
+import { CurveEditor } from '../ui/CurveEditor';
 import { RangeSlider } from '../ui/RangeSlider';
 import { Slider } from '../ui/Slider';
 import styles from './panels.module.css';
-
-interface TexField {
-  key: 'amplitude' | 'count' | 'wavelength' | 'seed' | 'angle' | 'zc' | 'width' | 'hgt' | 'rot';
-  label: string;
-  min: number;
-  max: number;
-  step: number;
-  unit?: string;
-}
-
-const WAVE: TexField[] = [
-  { key: 'amplitude', label: 'Amplitude', min: 0, max: 12, step: 0.1, unit: 'mm' },
-  { key: 'count', label: 'Around', min: 0, max: 60, step: 1, unit: '×' },
-  { key: 'wavelength', label: 'Vertical λ', min: 0, max: 120, step: 1, unit: 'mm' },
-];
-
-const FIELDS: Record<TextureType, TexField[]> = {
-  fuzzy: [
-    { key: 'amplitude', label: 'Strength', min: 0, max: 3, step: 0.05, unit: 'mm' },
-    { key: 'wavelength', label: 'Feature size', min: 0.5, max: 30, step: 0.5, unit: 'mm' },
-    { key: 'seed', label: 'Seed', min: 1, max: 99, step: 1 },
-  ],
-  wave: WAVE,
-  zigzag: WAVE,
-  ribs: [
-    { key: 'amplitude', label: 'Depth', min: 0, max: 8, step: 0.1, unit: 'mm' },
-    { key: 'count', label: 'Ribs', min: 1, max: 80, step: 1, unit: '×' },
-  ],
-  blobs: [
-    { key: 'amplitude', label: 'Dwell per blob', min: 0.1, max: 10, step: 0.1, unit: 's' },
-    { key: 'count', label: 'Blobs per row', min: 1, max: 60, step: 1, unit: '×' },
-    { key: 'wavelength', label: 'Row spacing', min: 0, max: 60, step: 1, unit: 'mm' },
-  ],
-  decal: [
-    { key: 'amplitude', label: 'Relief', min: -6, max: 6, step: 0.1, unit: 'mm' },
-    { key: 'angle', label: 'Around (centre)', min: -180, max: 180, step: 1, unit: '°' },
-    { key: 'zc', label: 'Height (centre)', min: 0, max: 400, step: 1, unit: 'mm' },
-    { key: 'width', label: 'Width', min: 5, max: 400, step: 1, unit: 'mm' },
-    { key: 'hgt', label: 'Height', min: 5, max: 400, step: 1, unit: 'mm' },
-    { key: 'rot', label: 'Rotation', min: -180, max: 180, step: 1, unit: '°' },
-  ],
-  twist: [{ key: 'amplitude', label: 'Total twist', min: -720, max: 720, step: 5, unit: '°' }],
-};
-
-const BLENDS: readonly (readonly [BlendMode, string])[] = [
-  ['add', 'Add (sum with layers above)'],
-  ['max', 'Max (higher one wins)'],
-  ['replace', 'Replace (overrides layers above)'],
-];
 
 const BRUSH_MODES = [
   ['add', 'Paint'],
@@ -126,7 +88,12 @@ function PaintTools({ id }: { id: string }) {
   );
 }
 
-function TextureCard({ tex }: { tex: TextureLayer }) {
+interface DragApi {
+  start: (e: DragEvent) => void;
+  end: () => void;
+}
+
+function TextureCard({ tex, drag }: { tex: TextureLayer; drag: DragApi }) {
   const patch = useSettingsStore((s) => s.patchTexture);
   const remove = useSettingsStore((s) => s.removeTexture);
   const painting = useUiStore((s) => s.paint.textureId === tex.id);
@@ -134,14 +101,46 @@ function TextureCard({ tex }: { tex: TextureLayer }) {
   const hasMask = useMaskStore((s) => Boolean(s.masks[tex.id]));
   const clearMask = useMaskStore((s) => s.clear);
   const move = useSettingsStore((s) => s.moveTexture);
+  const collapsed = useUiStore((s) => Boolean(s.collapsedTex[tex.id]));
+  const setCollapsed = useUiStore((s) => s.setTexCollapsed);
   const hasImage = useImageStore((s) => Boolean(s.images[tex.id]));
-  const removeImage = useImageStore((s) => s.remove);
   const fileId = useId();
   const layered = tex.type !== 'twist' && tex.type !== 'blobs';
 
   return (
-    <div className={styles.tex}>
+    <div className={styles.tex} data-texcard>
       <div className={styles.texHead}>
+        <button
+          type="button"
+          className={styles.grip}
+          draggable
+          title="Drag to reorder (applied top to bottom). Arrow keys also work."
+          aria-label={`Reorder ${TEXTURE_NAMES[tex.type]}`}
+          onDragStart={drag.start}
+          onDragEnd={drag.end}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+              e.preventDefault();
+              move(tex.id, e.key === 'ArrowUp' ? -1 : 1);
+            }
+          }}
+        >
+          ⠿
+        </button>
+        <button
+          type="button"
+          className={styles.chevron}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expand texture' : 'Collapse texture'}
+          title={collapsed ? 'Expand' : 'Collapse'}
+          onClick={() => {
+            if (!collapsed && painting) setPaintTexture(null);
+            setCollapsed(tex.id, !collapsed);
+          }}
+        >
+          {collapsed ? '▸' : '▾'}
+        </button>
+        <TextureThumb tex={tex} />
         <input
           type="checkbox"
           aria-label={`Enable ${TEXTURE_NAMES[tex.type]}`}
@@ -152,117 +151,130 @@ function TextureCard({ tex }: { tex: TextureLayer }) {
         <button
           type="button"
           className={styles.x}
-          title="Move up (applied earlier)"
-          aria-label="Move texture up"
-          onClick={() => move(tex.id, -1)}
-        >
-          ↑
-        </button>
-        <button
-          type="button"
-          className={styles.x}
-          title="Move down (applied later)"
-          aria-label="Move texture down"
-          onClick={() => move(tex.id, 1)}
-        >
-          ↓
-        </button>
-        <button
-          type="button"
-          className={styles.x}
           title="Remove texture"
           aria-label="Remove texture"
           onClick={() => {
             if (painting) setPaintTexture(null);
             clearMask(tex.id);
-            removeImage(tex.id);
             remove(tex.id);
           }}
         >
           ×
         </button>
       </div>
-      {tex.type === 'decal' && (
-        <div className={styles.maskRow}>
-          <span className={hasImage ? styles.maskOn : styles.hint}>
-            {hasImage ? 'Image loaded' : 'No image yet'}
-          </span>
-          <label className={styles.fileBtn} htmlFor={fileId}>
-            {hasImage ? 'Replace…' : 'Load image…'}
-          </label>
-          <input
-            id={fileId}
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void loadDecalImage(tex.id, file);
-              e.target.value = '';
-            }}
-          />
-        </div>
-      )}
-      {tex.type !== 'decal' && (
-        <RangeSlider
-          value={{ from: tex.from, solid: tex.solid, to: tex.to }}
-          onChange={(r) => patch(tex.id, r)}
-        />
-      )}
-      {FIELDS[tex.type].map((f) => (
-        <Slider
-          key={f.key}
-          label={f.label}
-          value={tex[f.key]}
-          min={f.min}
-          max={f.max}
-          step={f.step}
-          unit={f.unit}
-          onChange={(v) => patch(tex.id, { [f.key]: v })}
-        />
-      ))}
-      {tex.type === 'decal' && (
+      {!collapsed && (
         <>
-          <Toggle
-            label="Invert (bright = engraved)"
-            checked={tex.invert}
-            onChange={(invert) => patch(tex.id, { invert })}
-          />
-          <div className={styles.maskRow}>
-            <span className={styles.hint}>Click or drag on the model to place it</span>
-            <Button
-              small
-              variant={painting ? 'primary' : 'default'}
-              onClick={() => setPaintTexture(painting ? null : tex.id)}
-            >
-              {painting ? 'Placing…' : 'Place on model'}
-            </Button>
-          </div>
+          {tex.type === 'decal' && (
+            <div className={styles.maskRow}>
+              <span className={hasImage ? styles.maskOn : styles.hint}>
+                {hasImage ? 'Image loaded' : 'No image yet'}
+              </span>
+              <label className={styles.fileBtn} htmlFor={fileId}>
+                {hasImage ? 'Replace…' : 'Load image…'}
+              </label>
+              <input
+                id={fileId}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void loadDecalImage(tex.id, file);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+          )}
+          {tex.type !== 'decal' && (
+            <RangeSlider
+              value={{ from: tex.from, solidFrom: tex.solidFrom, solid: tex.solid, to: tex.to }}
+              onChange={(r) => patch(tex.id, r)}
+            />
+          )}
+          {FIELDS[tex.type].map((f) => (
+            <Slider
+              key={f.key}
+              label={f.label}
+              value={tex[f.key] ?? 0}
+              hint={f.hint}
+              min={f.min}
+              max={f.max}
+              step={f.step}
+              unit={f.unit}
+              onChange={(v) => patch(tex.id, { [f.key]: v })}
+            />
+          ))}
+          {tex.type === 'ledge' && (
+            <>
+              <CurveEditor
+                label="Outdent over height"
+                xLabel="height in range"
+                yLabel="outdent"
+                points={tex.curveV ?? CLOSE_SLOWLY}
+                presets={[
+                  ['Close slowly', CLOSE_SLOWLY],
+                  ['Bridge back', BRIDGE_BACK],
+                  ['Stay open', STAY_OPEN],
+                ]}
+                onChange={(curveV) => patch(tex.id, { curveV })}
+              />
+              <CurveEditor
+                label="Outdent around"
+                xLabel="angle around"
+                yLabel="outdent"
+                points={tex.curveA ?? ALL_AROUND}
+                presets={[
+                  ['All around', ALL_AROUND],
+                  ['One side', ONE_SIDE],
+                ]}
+                onChange={(curveA) => patch(tex.id, { curveA })}
+              />
+            </>
+          )}
+          {tex.type === 'decal' && (
+            <>
+              <Toggle
+                label="Invert (bright = engraved)"
+                checked={tex.invert}
+                onChange={(invert) => patch(tex.id, { invert })}
+              />
+              <div className={styles.maskRow}>
+                <span className={styles.hint}>Click or drag on the model to place it</span>
+                <Button
+                  small
+                  variant={painting ? 'primary' : 'default'}
+                  onClick={() => setPaintTexture(painting ? null : tex.id)}
+                >
+                  {painting ? 'Placing…' : 'Place on model'}
+                </Button>
+              </div>
+            </>
+          )}
+          {layered && (
+            <SelectField
+              label="Blend"
+              value={tex.blend}
+              options={BLENDS}
+              onChange={(blend: BlendMode) => patch(tex.id, { blend })}
+            />
+          )}
+          {tex.type !== 'twist' && tex.type !== 'decal' && (
+            <div className={styles.maskRow}>
+              <span className={hasMask ? styles.maskOn : styles.hint}>
+                {hasMask ? 'Painted area only' : 'Applies everywhere'}
+              </span>
+              <Button
+                small
+                variant={painting ? 'primary' : 'default'}
+                onClick={() => setPaintTexture(painting ? null : tex.id)}
+              >
+                {painting ? 'Painting…' : 'Paint mask'}
+              </Button>
+            </div>
+          )}
+          {painting && tex.type !== 'decal' && <PaintTools id={tex.id} />}
         </>
       )}
-      {layered && (
-        <SelectField
-          label="Blend"
-          value={tex.blend}
-          options={BLENDS}
-          onChange={(blend: BlendMode) => patch(tex.id, { blend })}
-        />
-      )}
-      {tex.type !== 'twist' && tex.type !== 'decal' && (
-        <div className={styles.maskRow}>
-          <span className={hasMask ? styles.maskOn : styles.hint}>
-            {hasMask ? 'Painted area only' : 'Applies everywhere'}
-          </span>
-          <Button
-            small
-            variant={painting ? 'primary' : 'default'}
-            onClick={() => setPaintTexture(painting ? null : tex.id)}
-          >
-            {painting ? 'Painting…' : 'Paint mask'}
-          </Button>
-        </div>
-      )}
-      {painting && tex.type !== 'decal' && <PaintTools id={tex.id} />}
     </div>
   );
 }
@@ -272,10 +284,30 @@ export function TexturesPanel() {
   const addTexture = useSettingsStore((s) => s.addTexture);
   const print = useSettingsStore((s) => s.print);
   const setPrint = useSettingsStore((s) => s.setPrint);
+  const moveTo = useSettingsStore((s) => s.moveTextureTo);
+  const [dragId, setDragId] = useState<string | null>(null);
+  /** insertion position (0..length) shown while dragging */
+  const [drop, setDrop] = useState<number | null>(null);
+  const stopDrag = () => {
+    setDragId(null);
+    setDrop(null);
+  };
+  const over = (i: number) => (e: DragEvent) => {
+    if (!dragId) return;
+    e.preventDefault();
+    const box = e.currentTarget.getBoundingClientRect();
+    setDrop(e.clientY > box.top + box.height / 2 ? i + 1 : i);
+  };
+  const dropHere = (e: DragEvent) => {
+    e.preventDefault();
+    const from = textures.findIndex((x) => x.id === dragId);
+    if (dragId && drop !== null && from >= 0) moveTo(dragId, drop > from ? drop - 1 : drop);
+    stopDrag();
+  };
   return (
     <Section title="Textures" defaultOpen>
       <Slider
-        label="Fade-in above floor"
+        label={F.textureFadeIn.label}
         value={print.textureFadeIn}
         min={0}
         max={30}
@@ -286,8 +318,33 @@ export function TexturesPanel() {
       />
       <div className={styles.textures}>
         {textures.length === 0 && <p className={styles.hint}>No textures yet. Add one below.</p>}
-        {textures.map((t) => (
-          <TextureCard key={t.id} tex={t} />
+        {textures.map((t, i) => (
+          <div
+            key={t.id}
+            className={[
+              styles.texSlot,
+              t.id === dragId ? styles.dragging : '',
+              drop === i ? styles.dropBefore : '',
+              drop === textures.length && i === textures.length - 1 ? styles.dropAfter : '',
+            ].join(' ')}
+            onDragOver={over(i)}
+            onDrop={dropHere}
+          >
+            <TextureCard
+              tex={t}
+              drag={{
+                start: (e) => {
+                  e.dataTransfer.effectAllowed = 'move';
+                  e.dataTransfer.setData('text/plain', t.id);
+                  const card = e.currentTarget.closest('[data-texcard]');
+                  if (card) e.dataTransfer.setDragImage(card, 12, 12);
+                  // after the browser has taken its drag snapshot, or some browsers cancel the drag
+                  setTimeout(() => setDragId(t.id), 0);
+                },
+                end: stopDrag,
+              }}
+            />
+          </div>
         ))}
       </div>
       <select

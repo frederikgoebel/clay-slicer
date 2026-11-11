@@ -4,6 +4,7 @@ import { PathBuilder } from './PathBuilder';
 import { buildRings, floorBelowLayers, floorLayerCount } from './rings';
 import { computeStats } from './stats';
 import { verifyToolpath } from './verify';
+import { addNormalWall } from './normal';
 import { addWall } from './wall';
 
 /**
@@ -18,7 +19,8 @@ export function runPipeline(pos: Float32Array, s: SliceSettings): ToolpathResult
   const path = new PathBuilder(s);
   addFloor(path, set, s);
   if (s.pauseAfterFloor && floorLayerCount(s) > 0) path.pauseAt = path.count;
-  addWall(path, set, s);
+  if (s.mode === 'normal') addNormalWall(path, set, s);
+  else addWall(path, set, s);
 
   const layers = set.layers + floorBelowLayers(s);
   const pauseS = path.pauseAt > 0 ? s.pauseSeconds : 0;
@@ -32,8 +34,13 @@ export function runPipeline(pos: Float32Array, s: SliceSettings): ToolpathResult
     width: Float32Array.from(path.width),
     overhang: Float32Array.from(path.overhang),
     dwell: Float32Array.from(path.dwell),
+    lift: Float32Array.from(path.lift),
     pauseAt: path.pauseAt,
     stats,
-    warnings: [...set.warnings, ...warnings, ...verifyToolpath(xyz, s)],
+    warnings: [
+      ...set.warnings,
+      ...warnings,
+      ...verifyToolpath(xyz, s, Uint8Array.from(path.feature)),
+    ],
   };
 }
