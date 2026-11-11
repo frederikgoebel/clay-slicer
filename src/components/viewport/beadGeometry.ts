@@ -23,7 +23,6 @@ export function buildBeadMesh(res: ToolpathResult, layerHeight: number, uvPerMm 
   const nor = new Float32Array(n * RING * 3);
   const uv = new Float32Array(n * RING * 2);
   const { xyz } = res;
-  const r = layerHeight / 2;
 
   // section outline in (side, up) with outward normals
   const sx: number[] = [];
@@ -65,7 +64,8 @@ export function buildBeadMesh(res: ToolpathResult, layerHeight: number, uvPerMm 
     const upY = (-ty * slope) / upL;
     const upZ = 1 / upL;
 
-    const half = Math.max(0, (res.width[i] - layerHeight) / 2);
+    const r = (res.thick?.[i] || layerHeight) / 2;
+    const half = Math.max(0, (res.width[i] - 2 * r) / 2);
     const cx = xyz[3 * i];
     const cy = xyz[3 * i + 1];
     const cz = xyz[3 * i + 2] - r;

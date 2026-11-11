@@ -19,7 +19,7 @@ export interface ProjectData {
   print: PrintSettings;
   textures: TextureLayer[];
   masks: Record<string, Mask>;
-  /** decal images by texture id */
+  /** decal images by texture id, and mask pictures by `<id>~mask` */
   images: Record<string, Mask>;
 }
 
@@ -57,14 +57,19 @@ export function writeProject(p: ProjectData): Uint8Array {
     if (m) files[`masks/${t.id}.bin`] = m.data;
   }
   for (const t of p.textures) {
-    const im = p.images[t.id];
-    if (!im) continue;
-    // decals/<id>.bin: width and height as uint16 LE, then the grayscale bytes
-    const buf = new Uint8Array(4 + im.data.length);
-    new DataView(buf.buffer).setUint16(0, im.width, true);
-    new DataView(buf.buffer).setUint16(2, im.height, true);
-    buf.set(im.data, 4);
-    files[`decals/${t.id}.bin`] = buf;
+    // decals/<id>.bin and maskimages/<id>.bin: width and height as uint16 LE, then the grayscale bytes
+    for (const [key, dir] of [
+      [t.id, 'decals'],
+      [`${t.id}~mask`, 'maskimages'],
+    ] as const) {
+      const im = p.images[key];
+      if (!im) continue;
+      const buf = new Uint8Array(4 + im.data.length);
+      new DataView(buf.buffer).setUint16(0, im.width, true);
+      new DataView(buf.buffer).setUint16(2, im.height, true);
+      buf.set(im.data, 4);
+      files[`${dir}/${t.id}.bin`] = buf;
+    }
   }
   return zipSync(files, { level: 6 });
 }
@@ -128,14 +133,18 @@ function readImages(
   textures: TextureLayer[],
 ): Record<string, Mask> {
   const images: Record<string, Mask> = {};
-  for (const t of textures) {
-    const d = files[`decals/${t.id}.bin`];
-    if (!d || d.length < 5) continue;
-    const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
-    const w = dv.getUint16(0, true);
-    const h = dv.getUint16(2, true);
-    if (w > 0 && h > 0 && d.length === 4 + w * h)
-      images[t.id] = { width: w, height: h, data: Uint8Array.from(d.subarray(4)) };
-  }
+  for (const t of textures)
+    for (const [key, dir] of [
+      [t.id, 'decals'],
+      [`${t.id}~mask`, 'maskimages'],
+    ] as const) {
+      const d = files[`${dir}/${t.id}.bin`];
+      if (!d || d.length < 5) continue;
+      const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
+      const w = dv.getUint16(0, true);
+      const h = dv.getUint16(2, true);
+      if (w > 0 && h > 0 && d.length === 4 + w * h)
+        images[key] = { width: w, height: h, data: Uint8Array.from(d.subarray(4)) };
+    }
   return images;
 }

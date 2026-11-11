@@ -137,3 +137,24 @@ export function normals(xy: Float64Array): Float64Array {
   }
   return out;
 }
+
+/**
+ * Signed curvature (1/mm) of a closed loop at point k, from the turn of its normals over a window
+ * of `win` points on each side. Positive = convex (bulging out of the material), negative =
+ * concave. `perimeter` is the loop length, so spacing between points is perimeter / n.
+ */
+export function curvatureAt(
+  nxy: Float64Array,
+  k: number,
+  n: number,
+  perimeter: number,
+  win = 2,
+): number {
+  const a = (k - win + n * 4) % n;
+  const b = (k + win) % n;
+  let d = Math.atan2(nxy[2 * b + 1], nxy[2 * b]) - Math.atan2(nxy[2 * a + 1], nxy[2 * a]);
+  while (d > Math.PI) d -= 2 * Math.PI;
+  while (d < -Math.PI) d += 2 * Math.PI;
+  const arc = (perimeter * 2 * win) / n;
+  return arc > 0 ? d / arc : 0;
+}

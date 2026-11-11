@@ -29,7 +29,10 @@ describe('project file', () => {
       print: { ...DEFAULT_PRINT, scalePct: 80 },
       textures: [tex],
       masks: { [tex.id]: mask },
-      images: { [tex.id]: { width: 2, height: 2, data: Uint8Array.from([1, 2, 3, 4]) } },
+      images: {
+        [tex.id]: { width: 2, height: 2, data: Uint8Array.from([1, 2, 3, 4]) },
+        [`${tex.id}~mask`]: { width: 1, height: 2, data: Uint8Array.from([9, 8]) },
+      },
     });
     const back = readProject(zip);
     expect(back.name).toBe('vase');
@@ -41,6 +44,7 @@ describe('project file', () => {
     expect(back.textures[0].id).toBe(tex.id);
     expect(back.masks[tex.id].data[1234]).toBe(200);
     expect(Array.from(back.images[tex.id].data)).toEqual([1, 2, 3, 4]);
+    expect(Array.from(back.images[`${tex.id}~mask`].data)).toEqual([9, 8]);
     expect(back.profiles.nozzle.extrusionRate).toBe(active.nozzle.extrusionRate);
     expect(back.profiles.nozzle.id).toBe(active.nozzle.id);
   });

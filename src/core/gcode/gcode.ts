@@ -1,6 +1,7 @@
-import { mm3SToCm3Min, nominalArea, nominalWidth } from '../toolpath/bead';
+import { beadArea, mm3SToCm3Min, nominalArea, nominalWidth } from '../toolpath/bead';
 import {
   FEATURE_FLOOR,
+  FEATURE_INFILL,
   FEATURE_TOP,
   FEATURE_TRAVEL,
   FEATURE_WALL,
@@ -19,6 +20,7 @@ const FEATURE_NAME: Record<number, string> = {
   [FEATURE_FLOOR]: 'FLOOR',
   [FEATURE_WALL]: 'WALL',
   [FEATURE_TOP]: 'TOP',
+  [FEATURE_INFILL]: 'FILL',
 };
 
 /**
@@ -64,6 +66,7 @@ export function buildGcode(r: ToolpathResult, s: SliceSettings, name = 'model'):
   }
   if (s.startDwell > 0) out.push(`G4 P${Math.round(s.startDwell)} ; wait for flow`);
 
+  const nw = nominalWidth(s);
   let lastF = -1;
   let lastFeature = -1;
   let retracted = false;
@@ -116,7 +119,9 @@ export function buildGcode(r: ToolpathResult, s: SliceSettings, name = 'model'):
       out.push(`G0 X${fmt(x)} Y${fmt(y)} Z${fmt(z)}${fPart}`);
     } else {
       const len = Math.hypot(x - xyz[3 * i - 3], y - xyz[3 * i - 2], z - xyz[3 * i - 1]);
-      e += len * ePerMm;
+      // thinner or thicker layers (follow the top) carry less or more clay per mm
+      const flow = beadArea(nw, r.thick[i]) / beadArea(nw, s.layerHeight);
+      e += len * ePerMm * flow;
       out.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(z)} E${e.toFixed(4)}${fPart}`);
     }
     if (r.dwell[i] > 0) {

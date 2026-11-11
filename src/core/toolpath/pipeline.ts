@@ -5,6 +5,7 @@ import { buildRings, floorBelowLayers, floorLayerCount } from './rings';
 import { computeStats } from './stats';
 import { verifyToolpath } from './verify';
 import { addNormalWall } from './normal';
+import { addVariableWall } from './variable';
 import { addWall } from './wall';
 
 /**
@@ -20,6 +21,7 @@ export function runPipeline(pos: Float32Array, s: SliceSettings): ToolpathResult
   addFloor(path, set, s);
   if (s.pauseAfterFloor && floorLayerCount(s) > 0) path.pauseAt = path.count;
   if (s.mode === 'normal') addNormalWall(path, set, s);
+  else if (s.topCurves === 'follow') set.warnings.push(...addVariableWall(path, set, s));
   else addWall(path, set, s);
 
   const layers = set.layers + floorBelowLayers(s);
@@ -35,6 +37,7 @@ export function runPipeline(pos: Float32Array, s: SliceSettings): ToolpathResult
     overhang: Float32Array.from(path.overhang),
     dwell: Float32Array.from(path.dwell),
     lift: Float32Array.from(path.lift),
+    thick: Float32Array.from(path.thick),
     pauseAt: path.pauseAt,
     stats,
     warnings: [

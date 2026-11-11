@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 /** model: shaded STL; layers: unlit toolpath lines; preview: meshed clay beads. */
 export type ViewMode = 'model' | 'layers' | 'preview';
-export type ColorMode = 'height' | 'feature' | 'overhang' | 'speed' | 'width';
+export type ColorMode = 'height' | 'feature' | 'overhang' | 'speed' | 'width' | 'thickness';
 
 interface PaintState {
   /** texture being painted, or null when the brush is off */
@@ -28,6 +28,10 @@ interface UiState {
   paint: PaintState;
   /** texture cards that are folded up (by texture id) */
   collapsedTex: Record<string, boolean>;
+  /** mirror edits of the section outline in the top view */
+  symX: boolean;
+  symY: boolean;
+  setSym: (axis: 'x' | 'y', v: boolean) => void;
 
   setView: (v: ViewMode) => void;
   setColorMode: (v: ColorMode) => void;
@@ -53,6 +57,9 @@ export const useUiStore = create<UiState>()((set) => ({
   showHandles: true,
   paint: { textureId: null, erase: false, radius: 12, hardness: 55, opacity: 100 },
   collapsedTex: {},
+  symX: false,
+  symY: false,
+  setSym: (axis, v) => set(axis === 'x' ? { symX: v } : { symY: v }),
 
   setView: (view) => set({ view }),
   setColorMode: (colorMode) => set({ colorMode }),

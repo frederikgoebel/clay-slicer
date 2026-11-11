@@ -215,3 +215,20 @@ describe('no floor and blobs', () => {
     expect(Math.max(0, ...firstLayers)).toBeLessThan(1);
   });
 });
+
+describe('curvatureAt', () => {
+  it('is 1/r for a circle, positive outward', async () => {
+    const { curvatureAt } = await import('../src/core/geometry/contour');
+    const n = 64;
+    const r = 20;
+    const nxy = new Float64Array(2 * n);
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * 2 * Math.PI;
+      nxy[2 * i] = Math.cos(a);
+      nxy[2 * i + 1] = Math.sin(a);
+    }
+    const k = curvatureAt(nxy, 5, n, 2 * Math.PI * r);
+    expect(k).toBeGreaterThan(0);
+    expect(k).toBeCloseTo(1 / r, 2);
+  });
+});

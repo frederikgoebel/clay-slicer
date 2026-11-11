@@ -1,7 +1,8 @@
 import type { RingSet } from '../toolpath/rings';
 import type { TextureLayer } from '../types';
 import { angleU } from './mask';
-import { dwellSeconds, radialOffset, twistAngle, type TexCtx } from './textures';
+import { curvatureAt } from '../geometry/contour';
+import { dwellSeconds, needsCurvature, radialOffset, twistAngle, type TexCtx } from './textures';
 
 export interface ThumbOptions {
   /** pixel size of the picture */
@@ -51,6 +52,7 @@ function blobBumps(set: RingSet, l: TextureLayer, o: ThumbOptions, H: number): F
         v: z / zmax,
         ang: 0,
         rad: 0,
+        curv: needsCurvature([l]) ? curvatureAt(A.nxy, k, N, A.perimeter) : 0,
       };
       const d = dwellSeconds([l], ctx, o.lh, 1e-3);
       if (d <= 0) continue;
@@ -81,6 +83,7 @@ export function renderTextureThumb(
   const { rings, N, layers: L } = set;
   const H = L * o.rowH;
   const only: TextureLayer[] = [{ ...layer, enabled: true }];
+  const curved = needsCurvature(only);
   const blobs = layer.type === 'blobs' ? blobBumps(set, layer, o, H) : null;
 
   // displaced wall points
@@ -107,6 +110,7 @@ export function renderTextureThumb(
         v: z / set.zmax,
         ang: Math.atan2(by - A.cy, bx - A.cx),
         rad: Math.hypot(bx - A.cx, by - A.cy),
+        curv: curved ? curvatureAt(A.nxy, k, N, A.perimeter) : 0,
       };
       let off = radialOffset(only, ctx);
       if (blobs) off += blobs[j * N + k];

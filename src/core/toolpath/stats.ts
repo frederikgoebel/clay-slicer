@@ -10,7 +10,7 @@ export function computeStats(
   sliceMs: number,
   pauseS = 0,
 ): { stats: ToolpathStats; warnings: string[] } {
-  const { xyz, feature, speed, width, overhang, dwell } = p;
+  const { xyz, feature, speed, width, overhang, dwell, thick } = p;
   const n = p.count;
   const h = s.layerHeight;
   let lengthMm = 0;
@@ -61,7 +61,7 @@ export function computeStats(
     lengthMm += len;
     timeS += len / speed[i];
     const before = volMm3;
-    volMm3 += len * beadArea(width[i], h);
+    volMm3 += len * beadArea(width[i], thick[i]);
     if (tankMm3 > 0 && Math.floor(volMm3 / tankMm3) > Math.floor(before / tankMm3))
       refillZ.push(xyz[3 * i + 2]);
     wMin = Math.min(wMin, width[i]);

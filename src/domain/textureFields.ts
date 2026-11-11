@@ -3,7 +3,6 @@ import type { BlendMode, TextureType } from '../core/types';
 export interface TexField {
   key:
     | 'lift'
-    | 'repeatV'
     | 'rotStep'
     | 'layersDown'
     | 'amplitude'
@@ -58,7 +57,15 @@ export const FIELDS: Record<TextureType, TexField[]> = {
   ledge: [
     { key: 'amplitude', label: 'Max outdent', min: 0, max: 40, step: 0.5, unit: 'mm' },
     { key: 'count', label: 'Repeats around', min: 1, max: 100, step: 1, unit: '×' },
-    { key: 'repeatV', label: 'Repeats in height', min: 1, max: 30, step: 1, unit: '×' },
+    {
+      key: 'wavelength',
+      label: 'Outdent height',
+      min: 1,
+      max: 120,
+      step: 1,
+      unit: 'mm',
+      hint: 'How tall each outdent is. The height range is split into outdents of about this height (a whole number of them fits the range).',
+    },
     {
       key: 'rotStep',
       label: 'Rotate each repeat',

@@ -35,7 +35,7 @@ function maskCopies(): Map<string, Uint8Array> {
   return out;
 }
 
-const NOT_TRACKED = new Set(['id', 'mask', 'image']);
+const NOT_TRACKED = new Set(['id', 'mask', 'image', 'maskImage']);
 
 function snapshot(): Doc {
   const d: Doc = new Map();
@@ -90,7 +90,7 @@ function applyDoc(doc: Doc): void {
     }
     const ids = (doc.get('texOrder') as string[] | undefined) ?? [];
     const textures = ids.map((id) => {
-      const t: Record<string, unknown> = { id, mask: null, image: null };
+      const t: Record<string, unknown> = { id, mask: null, image: null, maskImage: null };
       const pre = `texture.${id}.`;
       for (const [k, v] of doc) if (k.startsWith(pre)) t[k.slice(pre.length)] = v;
       return t as unknown as TextureLayer;

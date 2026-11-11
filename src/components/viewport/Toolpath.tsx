@@ -8,7 +8,7 @@ import { useSliceStore } from '../../store/sliceStore';
 import { useUiStore, type ColorMode } from '../../store/uiStore';
 import { visiblePointCount } from './pathUtils';
 import { useEffectiveView } from './useEffectiveView';
-import { pointColors } from './toolpathColors';
+import { colorModesFor, pointColors } from './toolpathColors';
 
 /** Crisp, unlit screen-space lines (px). */
 const LINE_PX = 1.5;
@@ -49,9 +49,13 @@ export function Toolpath() {
   const result = useSliceStore((s) => s.result);
   const settings = useSliceStore((s) => s.usedSettings);
   const view = useEffectiveView();
-  const mode = useUiStore((s) => s.colorMode);
+  const picked = useUiStore((s) => s.colorMode);
   const layer = useUiStore((s) => s.layer);
 
+  const mode = useMemo(
+    () => (result && colorModesFor(result).includes(picked) ? picked : 'height'),
+    [result, picked],
+  );
   const layerHeight = settings?.layerHeight ?? 1;
   const overhangLimit = settings?.overhangMax ?? 25;
 

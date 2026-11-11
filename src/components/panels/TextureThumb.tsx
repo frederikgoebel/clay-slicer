@@ -54,6 +54,7 @@ export function TextureThumb({ tex }: { tex: TextureLayer }) {
   const mask = useMaskStore((s) => s.masks[tex.id]);
   const version = useMaskStore((s) => s.version);
   const image = useImageStore((s) => s.images[tex.id]);
+  const maskImage = useImageStore((s) => s.images[`${tex.id}~mask`]);
   const { layerHeight, textureFadeIn } = settings;
 
   useEffect(() => {
@@ -67,7 +68,7 @@ export function TextureThumb({ tex }: { tex: TextureLayer }) {
       if (!prev) return;
       const pixels = renderTextureThumb(
         prev.set,
-        { ...tex, mask: mask ?? null, image: image ?? null },
+        { ...tex, mask: mask ?? null, image: image ?? null, maskImage: maskImage ?? null },
         {
           width: W,
           height: H,
@@ -82,7 +83,7 @@ export function TextureThumb({ tex }: { tex: TextureLayer }) {
     return () => clearTimeout(timer);
     // `settings` only feeds the one-off coarse slice; the values that matter are listed
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mesh, tex, mask, image, version, layerHeight, textureFadeIn, clay.color]);
+  }, [mesh, tex, mask, image, maskImage, version, layerHeight, textureFadeIn, clay.color]);
 
   return (
     <canvas

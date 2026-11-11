@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+import { colorModesFor, thicknessRange } from '../viewport/toolpathColors';
 import { useSliceStore } from '../../store/sliceStore';
 import { useUiStore, type ColorMode, type ViewMode } from '../../store/uiStore';
 import { Segmented } from '../ui/controls';
@@ -15,6 +17,7 @@ const COLORS: readonly (readonly [ColorMode, string])[] = [
   ['overhang', 'Overhang'],
   ['speed', 'Speed'],
   ['width', 'Bead width'],
+  ['thickness', 'Layer height'],
 ];
 
 export function ViewBar() {
@@ -22,21 +25,29 @@ export function ViewBar() {
   const colorMode = useUiStore((s) => s.colorMode);
   const setView = useUiStore((s) => s.setView);
   const setColorMode = useUiStore((s) => s.setColorMode);
-  const hasPath = useSliceStore((s) => s.result !== null);
+  const result = useSliceStore((s) => s.result);
+  const modes = useMemo(() => (result ? colorModesFor(result) : []), [result]);
+  const mode = modes.includes(colorMode) ? colorMode : 'height';
+  const [t0, t1] = result ? thicknessRange(result) : [0, 0];
   return (
     <div className={styles.viewbar}>
       <Segmented label="View" value={view} options={VIEWS} onChange={setView} />
-      {view === 'layers' && hasPath && (
+      {view === 'layers' && result && (
         <label className={styles.inline}>
           Colour
-          <select value={colorMode} onChange={(e) => setColorMode(e.target.value as ColorMode)}>
-            {COLORS.map(([v, name]) => (
+          <select value={mode} onChange={(e) => setColorMode(e.target.value as ColorMode)}>
+            {COLORS.filter(([v]) => modes.includes(v)).map(([v, name]) => (
               <option key={v} value={v}>
                 {name}
               </option>
             ))}
           </select>
         </label>
+      )}
+      {view === 'layers' && result && mode === 'thickness' && (
+        <span className={styles.inline} title="blue = thinnest, yellow = thickest">
+          {t0.toFixed(2)} – {t1.toFixed(2)} mm
+        </span>
       )}
     </div>
   );

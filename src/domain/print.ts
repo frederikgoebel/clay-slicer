@@ -1,5 +1,12 @@
 import type { CurvePoint } from '../core/textures/curve';
-import type { FloorPattern, PrintMode, TopCurves, TextureLayer, TextureType } from '../core/types';
+import type {
+  FloorPattern,
+  InfillPattern,
+  PrintMode,
+  TopCurves,
+  TextureLayer,
+  TextureType,
+} from '../core/types';
 
 /** Settings that belong to one print rather than to a machine, nozzle or clay. */
 export interface PrintSettings {
@@ -15,6 +22,12 @@ export interface PrintSettings {
   /** degrees from vertical below which a face counts as top surface */
   topAngle: number;
   /** mm of E pulled back before travel moves (0 = off) */
+  /** Standard layers: wall loops, infill share in % (0 = none), pattern, angle, solid layers at the top */
+  wallCount: number;
+  infillDensity: number;
+  infillPattern: InfillPattern;
+  infillAngle: number;
+  solidTop: number;
   retractDistance: number;
   /** mm/s */
   retractSpeed: number;
@@ -44,6 +57,11 @@ export const DEFAULT_PRINT: PrintSettings = {
   topFinish: true,
   topCurves: 'closed',
   topAngle: 35,
+  wallCount: 1,
+  infillDensity: 0,
+  infillPattern: 'lines',
+  infillAngle: 45,
+  solidTop: 2,
   retractDistance: 3,
   retractSpeed: 20,
   zHop: 5,
@@ -146,7 +164,7 @@ export function newTexture(type: TextureType): TextureLayer {
         to: 60,
         solidFrom: 40,
         solid: 60,
-        repeatV: 1,
+        wavelength: 12,
         rotStep: 0,
         curveV: [...CLOSE_SLOWLY],
         curveA: [...ALL_AROUND],

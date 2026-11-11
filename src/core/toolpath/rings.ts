@@ -53,7 +53,7 @@ export function buildRings(pos: Float32Array, s: SliceSettings): RingSet {
   let L = Math.ceil(zmax / h - 0.5 - 1e-9);
   if (L < F + 2) throw new Error('Model is too low for this layer height and floor thickness.');
 
-  const capCos = s.topCurves === 'open' ? Math.cos((s.topAngle * Math.PI) / 180) : 2;
+  const capCos = s.topCurves !== 'closed' ? Math.cos((s.topAngle * Math.PI) / 180) : 2;
   const sliced = sliceLayersFlagged(pos, h, L, capCos);
   const normal = s.mode === 'normal';
   const outers: FlaggedLoop[] = [];

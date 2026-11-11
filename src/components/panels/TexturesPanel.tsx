@@ -10,7 +10,9 @@ import {
   TEXTURE_NAMES,
 } from '../../domain/print';
 import { useId, useState, type DragEvent } from 'react';
-import { loadDecalImage } from '../../actions/decalActions';
+import { loadDecalImage, maskImageKey } from '../../actions/decalActions';
+import { DEFAULT_PATTERN, PATTERN_KINDS } from '../../core/textures/noise';
+import type { MaskPattern, PatternKind } from '../../core/types';
 import { useImageStore } from '../../store/imageStore';
 import { useMaskStore } from '../../store/maskStore';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -91,6 +93,227 @@ function PaintTools({ id }: { id: string }) {
 interface DragApi {
   start: (e: DragEvent) => void;
   end: () => void;
+}
+
+const NOISE_KINDS: PatternKind[] = ['simplex', 'billow', 'ridged'];
+
+/** Where the texture applies: noise, stripes or an image, on top of the painted area. */
+function PatternTools({ tex }: { tex: TextureLayer }) {
+  const patch = useSettingsStore((s) => s.patchTexture);
+  const fileId = useId();
+  const imageKey = maskImageKey(tex.id);
+  const hasImage = useImageStore((s) => Boolean(s.images[imageKey]));
+  const p = tex.maskPattern ?? null;
+  const set = (v: Partial<MaskPattern>) =>
+    patch(tex.id, { maskPattern: { ...DEFAULT_PATTERN, ...(p ?? {}), ...v } });
+  return (
+    <>
+      <div className={styles.maskRow}>
+        <label className={styles.label} htmlFor={`${fileId}-kind`}>
+          Mask pattern
+        </label>
+        <select
+          id={`${fileId}-kind`}
+          aria-label="Mask pattern"
+          value={p?.kind ?? 'none'}
+          onChange={(e) =>
+            e.target.value === 'none'
+              ? patch(tex.id, { maskPattern: null })
+              : set({ kind: e.target.value as PatternKind })
+          }
+        >
+          <option value="none">None</option>
+          {PATTERN_KINDS.map(([k, name]) => (
+            <option key={k} value={k}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </div>
+      {p && p.kind === 'image' && (
+        <div className={styles.maskRow}>
+          <span className={hasImage ? styles.maskOn : styles.hint}>
+            {hasImage ? 'Image loaded (bright = texture)' : 'No image yet'}
+          </span>
+          <label className={styles.fileBtn} htmlFor={fileId}>
+            {hasImage ? 'Replace…' : 'Load image…'}
+          </label>
+          <input
+            id={fileId}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void loadDecalImage(tex.id, file, imageKey);
+              e.target.value = '';
+            }}
+          />
+        </div>
+      )}
+      {p && p.kind === 'image' && (
+        <>
+          <Slider
+            label="Repeats around"
+            value={p.tilesU}
+            min={1}
+            max={20}
+            step={1}
+            unit="×"
+            onChange={(tilesU) => set({ tilesU })}
+          />
+          <Slider
+            label="Repeats in height"
+            value={p.tilesV}
+            min={1}
+            max={20}
+            step={1}
+            unit="×"
+            hint="The picture is wrapped once around the object and over its whole height, then repeated"
+            onChange={(tilesV) => set({ tilesV })}
+          />
+        </>
+      )}
+      {p && p.kind === 'curvature' && (
+        <>
+          <div className={styles.maskRow}>
+            <label className={styles.label} htmlFor={`${fileId}-where`}>
+              Where
+            </label>
+            <select
+              id={`${fileId}-where`}
+              aria-label="Curvature where"
+              value={p.curvature ?? 'either'}
+              onChange={(e) =>
+                set({ curvature: e.target.value as 'convex' | 'concave' | 'either' })
+              }
+            >
+              <option value="convex">Outward corners (convex)</option>
+              <option value="concave">Inward corners (concave)</option>
+              <option value="either">Both</option>
+            </select>
+          </div>
+          <Slider
+            label="Corner radius"
+            value={p.scale}
+            min={2}
+            max={200}
+            step={1}
+            unit="mm"
+            hint="Where the outline bends tighter than this radius the texture applies. Use Invert for flatter areas."
+            onChange={(scale) => set({ scale })}
+          />
+          <Slider
+            label="Soft edge"
+            value={p.softness}
+            min={0}
+            max={100}
+            step={1}
+            unit="%"
+            onChange={(softness) => set({ softness })}
+          />
+        </>
+      )}
+      {p && p.kind !== 'image' && p.kind !== 'curvature' && (
+        <>
+          {p.kind !== 'gradient' && (
+            <Slider
+              label="Size"
+              value={p.scale}
+              min={2}
+              max={150}
+              step={1}
+              unit="mm"
+              hint="Size of the features on the surface"
+              onChange={(scale) => set({ scale })}
+            />
+          )}
+          {NOISE_KINDS.includes(p.kind) && (
+            <Slider
+              label="Detail"
+              value={p.detail}
+              min={1}
+              max={6}
+              step={1}
+              unit="×"
+              hint="Layers of finer noise added on top"
+              onChange={(detail) => set({ detail })}
+            />
+          )}
+          {p.kind !== 'gradient' && (
+            <Slider
+              label="Stretch in height"
+              value={p.stretch}
+              min={0.2}
+              max={5}
+              step={0.1}
+              unit="×"
+              hint="1 = same size around and in height; above 1 = taller features"
+              onChange={(stretch) => set({ stretch })}
+            />
+          )}
+          {(p.kind === 'stripes' || p.kind === 'checker' || p.kind === 'gradient') && (
+            <Slider
+              label="Direction"
+              value={p.rotate}
+              min={-90}
+              max={90}
+              step={1}
+              unit="°"
+              hint={
+                p.kind === 'gradient'
+                  ? '0 = bottom to top · 90 = from one side round to the opposite side · negative = the other way'
+                  : '0 = rings around the object (stripes) · 90 = vertical lines'
+              }
+              onChange={(rotate) => set({ rotate })}
+            />
+          )}
+          <Slider
+            label="Warp"
+            value={p.warp}
+            min={0}
+            max={100}
+            step={1}
+            unit="%"
+            hint="Bends the pattern with a second noise, for organic edges"
+            onChange={(warp) => set({ warp })}
+          />
+          <Slider
+            label="Coverage"
+            value={p.coverage}
+            min={0}
+            max={100}
+            step={1}
+            unit="%"
+            hint="How much of the surface the texture covers"
+            onChange={(coverage) => set({ coverage })}
+          />
+          <Slider
+            label="Soft edge"
+            value={p.softness}
+            min={0}
+            max={100}
+            step={1}
+            unit="%"
+            onChange={(softness) => set({ softness })}
+          />
+          {p.kind !== 'gradient' && (
+            <Slider
+              label="Seed"
+              value={p.seed}
+              min={0}
+              max={999}
+              step={1}
+              onChange={(seed) => set({ seed })}
+            />
+          )}
+        </>
+      )}
+      {p && (
+        <Toggle label="Invert pattern" checked={p.invert} onChange={(invert) => set({ invert })} />
+      )}
+    </>
+  );
 }
 
 function TextureCard({ tex, drag }: { tex: TextureLayer; drag: DragApi }) {
@@ -273,6 +496,7 @@ function TextureCard({ tex, drag }: { tex: TextureLayer; drag: DragApi }) {
             </div>
           )}
           {painting && tex.type !== 'decal' && <PaintTools id={tex.id} />}
+          {tex.type !== 'twist' && tex.type !== 'decal' && <PatternTools tex={tex} />}
         </>
       )}
     </div>

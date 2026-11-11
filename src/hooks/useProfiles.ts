@@ -32,7 +32,12 @@ export function useSliceSettings(): SliceSettings {
         nozzle,
         clay,
         print,
-        textures.map((t) => ({ ...t, mask: masks[t.id] ?? null, image: images[t.id] ?? null })),
+        textures.map((t) => ({
+          ...t,
+          mask: masks[t.id] ?? null,
+          image: images[t.id] ?? null,
+          maskImage: images[`${t.id}~mask`] ?? null,
+        })),
       ),
     // maskVersion: strokes mutate mask data in place, then bump the version
     // eslint-disable-next-line react-hooks/exhaustive-deps

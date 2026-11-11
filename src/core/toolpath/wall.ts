@@ -1,7 +1,9 @@
+import { curvatureAt } from '../geometry/contour';
 import { angleU } from '../textures/mask';
 import {
   blobLift,
   dwellSeconds,
+  needsCurvature,
   radialOffset,
   twistAngle,
   type TexCtx,
@@ -26,6 +28,7 @@ export function addWall(path: PathBuilder, set: RingSet, s: SliceSettings): void
   const textures = s.textures;
   let idx = 0;
   const liftMm = blobLift(textures);
+  const curved = needsCurvature(textures);
 
   const ringSpeed = (len: number) =>
     s.minLayerTime > 0
@@ -81,6 +84,7 @@ export function addWall(path: PathBuilder, set: RingSet, s: SliceSettings): void
       v: zr / zmax,
       ang: Math.atan2(by - cy, bx - cx),
       rad: Math.hypot(bx - cx, by - cy),
+      curv: curved ? curvatureAt(A.nxy, kk, N, A.perimeter) : 0,
     };
     const off = textures.length ? radialOffset(textures, ctx) : 0;
     let x = bx + nx * off;

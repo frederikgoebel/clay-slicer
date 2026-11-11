@@ -1,5 +1,6 @@
 import { useState, type PointerEvent } from 'react';
 import { sectionOutline, MIN_VERTS, type ShapeSection, type Vec } from '../../core/shape/shape';
+import { dragSymmetric } from '../../core/shape/symmetry';
 import { useActiveProfile } from '../../hooks/useProfiles';
 import { useModelStore } from '../../store/modelStore';
 import { useUiStore } from '../../store/uiStore';
@@ -23,6 +24,8 @@ export function TopView() {
   const secIdx = useUiStore((s) => s.shapeSection);
   const vIdx = useUiStore((s) => s.shapeVertex);
   const setVertex = useUiStore((s) => s.setShapeVertex);
+  const symX = useUiStore((s) => s.symX);
+  const symY = useUiStore((s) => s.symY);
   const { buildDiameter } = useActiveProfile('printer');
   /** view half-size, frozen while a point is dragged so the point does not run from the cursor */
   const [frozen, setFrozen] = useState<number | null>(null);
@@ -75,12 +78,13 @@ export function TopView() {
       });
       return;
     }
-    const verts = sec.verts.map((v): Vec => [...v]);
-    verts[dragging] = [
+    const to: Vec = [
       Math.max(-lim, Math.min(lim, Math.round(mm[0]))),
       Math.max(-lim, Math.min(lim, Math.round(mm[1]))),
     ];
-    setVerts(verts);
+    setVerts(
+      dragSymmetric(sec.verts, dragging, to, { x: symX, y: symY }, Math.max(2, 0.04 * frozen)),
+    );
   };
 
   let x0 = Infinity;

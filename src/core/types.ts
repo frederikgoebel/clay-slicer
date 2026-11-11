@@ -47,12 +47,14 @@ export interface TextureLayer {
   width: number;
   hgt: number;
   rot: number;
+  /** noise / stripes / image limiting where the texture applies (together with the painted mask) */
+  maskPattern?: MaskPattern | null;
+  /** the picture for a maskPattern of kind image (attached from the image store) */
+  maskImage?: Mask | null;
   /** outdent: how far out it goes over the texture's height range (x = height, y = outdent) */
   curveV?: CurvePoint[];
   /** outdent: strength around the object (x = angle 0..1 from +X, y = outdent) */
   curveA?: CurvePoint[];
-  /** outdent: how often the height curve repeats within the height range */
-  repeatV?: number;
   /** outdent / sling: degrees each repeat (outdent) or row (sling) is rotated further around */
   rotStep?: number;
   /** sling: how many consecutive layers droop */
@@ -71,7 +73,47 @@ export interface TextureLayer {
 export type PrintMode = 'spiral' | 'layered' | 'normal';
 
 /** Where the top surface is not flat: close each layer's curve across the cut, or keep open lines */
-export type TopCurves = 'closed' | 'open';
+export type PatternKind =
+  | 'simplex'
+  | 'billow'
+  | 'ridged'
+  | 'cells'
+  | 'cracks'
+  | 'stripes'
+  | 'checker'
+  | 'gradient'
+  | 'curvature'
+  | 'image';
+
+/** A procedural or image pattern that limits where a texture applies (multiplied with the painted mask). */
+export interface MaskPattern {
+  kind: PatternKind;
+  /** feature size on the surface, mm */
+  scale: number;
+  /** noise: layers of detail (1..6) */
+  detail: number;
+  /** stretch of the pattern in height (1 = same as around) */
+  stretch: number;
+  /** how much the pattern is bent by a second noise, % */
+  warp: number;
+  /** stripes / checkerboard: direction, degrees */
+  rotate: number;
+  /** how much of the surface the pattern covers, % */
+  coverage: number;
+  /** soft edge, % */
+  softness: number;
+  seed: number;
+  invert: boolean;
+  /** curvature: where it applies (convex = outward corners, concave = inward corners) */
+  curvature?: 'convex' | 'concave' | 'either';
+  /** image: how many times it repeats around and in height */
+  tilesU: number;
+  tilesV: number;
+}
+
+export type InfillPattern = 'lines' | 'grid' | 'triangles' | 'gyroid';
+
+export type TopCurves = 'closed' | 'open' | 'follow';
 
 /** Everything the pipeline needs, flattened from printer + nozzle + clay profiles + print settings. */
 export interface SliceSettings {
@@ -111,6 +153,12 @@ export interface SliceSettings {
   /** faces whose normal is within this many degrees of vertical count as top surface (open lines) */
   topAngle: number;
   /** mm of extruder (E) pulled back before a travel move; 0 = no retraction */
+  /** Standard layers: number of wall loops, infill share (0 = none), pattern, angle, solid top layers */
+  wallCount: number;
+  infillDensity: number;
+  infillPattern: InfillPattern;
+  infillAngle: number;
+  solidTop: number;
   retractDistance: number;
   /** mm/s */
   retractSpeed: number;
@@ -146,6 +194,7 @@ export const FEATURE_TRAVEL = 0;
 export const FEATURE_FLOOR = 1;
 export const FEATURE_WALL = 2;
 export const FEATURE_TOP = 3;
+export const FEATURE_INFILL = 4;
 
 export interface ToolpathStats {
   lengthMm: number;
@@ -182,6 +231,8 @@ export interface ToolpathResult {
   dwell: Float32Array;
   /** mm the nozzle rises while standing still at a dwell point */
   lift: Float32Array;
+  /** layer thickness in mm at each point (varies around the object with 'follow the top') */
+  thick: Float32Array;
   /** index of the point the pause after the floor comes before, -1 = no pause */
   pauseAt: number;
   stats: ToolpathStats;

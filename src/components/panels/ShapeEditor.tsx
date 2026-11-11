@@ -28,6 +28,9 @@ export function ShapeEditor() {
   const update = useModelStore((s) => s.updateShape);
   const selIdx = useUiStore((s) => s.shapeSection);
   const select = useUiStore((s) => s.setShapeSection);
+  const symX = useUiStore((s) => s.symX);
+  const symY = useUiStore((s) => s.symY);
+  const setSym = useUiStore((s) => s.setSym);
   const showHandles = useUiStore((s) => s.showHandles);
   const setShowHandles = useUiStore((s) => s.setShowHandles);
   const [applyAll, setApplyAll] = useState(false);
@@ -154,6 +157,12 @@ export function ShapeEditor() {
 
       <div className={styles.group}>Section P{sel + 1}: top view</div>
       <TopView />
+      {!cur.circle && (
+        <>
+          <Toggle label="Mirror X (left ↔ right)" checked={symX} onChange={(v) => setSym('x', v)} />
+          <Toggle label="Mirror Y (top ↔ bottom)" checked={symY} onChange={(v) => setSym('y', v)} />
+        </>
+      )}
       <Toggle label="Perfect circle" checked={cur.circle !== null} onChange={setCircle} />
       {!cur.circle && (
         <>

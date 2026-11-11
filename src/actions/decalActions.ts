@@ -5,10 +5,17 @@ import { useModelStore } from '../store/modelStore';
 const MAX_SIDE = 512;
 
 /**
- * Turn a picture into a grayscale decal: luminance x alpha, scaled to at most 512 px.
+ * Turn a picture into a grayscale decal (or mask picture, with a different `key`): luminance x alpha, scaled to at most 512 px.
  * Bright = raised (or engraved with "Invert"), so a white drawing on black works as is.
  */
-export async function loadDecalImage(textureId: string, file: File): Promise<void> {
+/** The image-store key of a texture's mask picture (the decal picture uses the plain id). */
+export const maskImageKey = (textureId: string) => `${textureId}~mask`;
+
+export async function loadDecalImage(
+  textureId: string,
+  file: File,
+  key = textureId,
+): Promise<void> {
   try {
     const bitmap = await createImageBitmap(file);
     const k = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
@@ -28,7 +35,7 @@ export async function loadDecalImage(textureId: string, file: File): Promise<voi
       data[i] = Math.round((lum * rgba[4 * i + 3]) / 255);
     }
     const image: Mask = { width: w, height: h, data };
-    useImageStore.getState().set(textureId, image);
+    useImageStore.getState().set(key, image);
   } catch (err) {
     useModelStore
       .getState()

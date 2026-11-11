@@ -108,16 +108,16 @@ describe('decal', () => {
 
 describe('ledge, sling and blob lift', () => {
   it('outdent follows the height curve and the curve around the object', () => {
-    const l = tex('ledge', { amplitude: 10, from: 0, to: 100, count: 1 });
+    const l = tex('ledge', { amplitude: 10, from: 0, to: 100, wavelength: 60, count: 1 });
     const at = (z: number, u = 0.5) => radialOffset([l], ctx({ z, H: 60, u }));
     expect(at(0)).toBeCloseTo(0, 5);
     expect(at(15)).toBeCloseTo(5, 5); // halfway up the ramp
     expect(at(30)).toBeCloseTo(10, 5); // peak
     expect(at(45)).toBeCloseTo(5, 5); // closing slowly
-    const bridge = tex('ledge', { amplitude: 10, curveV: BRIDGE_BACK, count: 1 });
+    const bridge = tex('ledge', { amplitude: 10, curveV: BRIDGE_BACK, wavelength: 60, count: 1 });
     expect(radialOffset([bridge], ctx({ z: 59.5, H: 60 }))).toBeLessThan(5);
     expect(radialOffset([bridge], ctx({ z: 55, H: 60 }))).toBeGreaterThan(8);
-    const side = tex('ledge', { amplitude: 10, curveA: ONE_SIDE, count: 1 });
+    const side = tex('ledge', { amplitude: 10, curveA: ONE_SIDE, wavelength: 60, count: 1 });
     expect(radialOffset([side], ctx({ z: 30, H: 60, u: 0.5 }))).toBeCloseTo(10, 5);
     expect(radialOffset([side], ctx({ z: 30, H: 60, u: 0.1 }))).toBeCloseTo(0, 5);
   });
@@ -128,8 +128,15 @@ describe('ledge, sling and blob lift', () => {
     expect(at(0, 0.2)).toBe(0); // beside the spike
     expect(at(2, 0.125)).toBe(0); // other layer
   });
-  it('repeats the outdent in height and turns each repeat', () => {
-    const l = tex('ledge', { amplitude: 10, from: 0, to: 100, count: 4, repeatV: 3, rotStep: 45 });
+  it('splits the range into outdents of the given height and turns each repeat', () => {
+    const l = tex('ledge', {
+      amplitude: 10,
+      from: 0,
+      to: 100,
+      count: 4,
+      wavelength: 20,
+      rotStep: 45,
+    });
     const at = (z: number, u: number) => radialOffset([l], ctx({ z, H: 60, u }));
     expect(at(10, 0.5)).toBeCloseTo(10, 5); // peak of repeat 1 (z 0..20)
     expect(at(30, 0.5)).toBeCloseTo(10, 5); // peak of repeat 2

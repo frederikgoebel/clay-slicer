@@ -1,6 +1,7 @@
 import type { TextureLayer } from '../types';
 import { curveAt } from './curve';
 import { sampleImage, sampleMask } from './mask';
+import { patternMask } from './noise';
 
 export interface TexCtx {
   z: number;
@@ -23,6 +24,8 @@ export interface TexCtx {
   /** angle (rad, atan2) and distance of the base point around the layer's centre, for decals */
   ang: number;
   rad: number;
+  /** signed curvature of the contour here, 1/mm (convex +); only filled in for curvature masks */
+  curv?: number;
 }
 
 const TAU = Math.PI * 2;
@@ -63,6 +66,22 @@ function heightMask(l: TextureLayer, z: number, H: number): number {
   return 1 - smooth((z - zs) / (zt - zs));
 }
 
+/** True when a texture uses a curvature mask, so callers know to compute the contour curvature. */
+export const needsCurvature = (layers: TextureLayer[]): boolean =>
+  layers.some((l) => l.enabled && l.maskPattern?.kind === 'curvature');
+
+/** Painted mask times pattern mask (noise, stripes, image ...) at a point; 1 where there is none. */
+function maskValue(l: TextureLayer, c: TexCtx): number {
+  let m = l.mask ? sampleMask(l.mask, c.u, c.v) : 1;
+  if (m > 0 && l.maskPattern)
+    m *= patternMask(
+      l.maskPattern,
+      { ang: c.ang, rad: c.rad, z: c.z, H: c.H, u: c.u, v: c.v, curv: c.curv },
+      l.maskImage,
+    );
+  return m;
+}
+
 const wrapPi = (a: number) => a - TAU * Math.round(a / TAU);
 
 /** Decal value 0..1 at this point (image placed on the surface, in mm); -1 outside the picture. */
@@ -89,7 +108,7 @@ function ledgeValue(l: TextureLayer, c: TexCtx): number {
   const zf = (l.from / 100) * c.H;
   const zt = (l.to / 100) * c.H;
   if (zt <= zf) return 0;
-  const n = Math.max(1, Math.round(l.repeatV ?? 1));
+  const n = Math.max(1, Math.round((zt - zf) / Math.max(l.wavelength, 0.1)));
   const s = Math.min(n - 1e-9, Math.max(0, ((c.z - zf) / (zt - zf)) * n));
   const k = Math.floor(s);
   const along = curveAt(l.curveV, s - k);
@@ -128,10 +147,8 @@ export function radialOffset(layers: TextureLayer[], c: TexCtx): number {
     if (!l.enabled || l.type === 'twist' || l.type === 'blobs') continue;
     let m = heightMask(l, c.z, c.H);
     if (m === 0) continue;
-    if (l.mask) {
-      m *= sampleMask(l.mask, c.u, c.v);
-      if (m === 0) continue;
-    }
+    m *= maskValue(l, c);
+    if (m === 0) continue;
     if (l.type === 'ledge' || l.type === 'sling') {
       const value = l.amplitude * (l.type === 'ledge' ? ledgeValue(l, c) : slingValue(l, c));
       if (value === 0) continue;
@@ -202,7 +219,7 @@ export function dwellSeconds(
     // the dwell time scales with everything that fades the effect: the height range and its
     // soft edges, the start fade-in, and the painted mask (a half-painted spot gets half the dwell)
     let m = heightMask(l, c.z, c.H) * gate;
-    if (l.mask) m *= sampleMask(l.mask, c.u, c.v);
+    m *= maskValue(l, c);
     if (l.amplitude * m < 0.02) continue;
     const every = l.wavelength > 0 ? Math.max(1, Math.round(l.wavelength / layerHeight)) : 1;
     const layer = Math.floor(c.z / layerHeight + 1e-6);

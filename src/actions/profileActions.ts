@@ -51,6 +51,7 @@ export function resetEverything(): void {
   for (const tex of textures) {
     useMaskStore.getState().clear(tex.id);
     useImageStore.getState().remove(tex.id);
+    useImageStore.getState().remove(`${tex.id}~mask`);
   }
   resetAll();
 }

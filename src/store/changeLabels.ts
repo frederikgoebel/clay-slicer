@@ -1,5 +1,6 @@
 import type { ShapeSection } from '../core/shape/shape';
-import type { TextureType } from '../core/types';
+import { PATTERN_KINDS } from '../core/textures/noise';
+import type { PatternKind, TextureType } from '../core/types';
 import type { Change, Description, Doc } from '../domain/history';
 import { TEXTURE_NAMES } from '../domain/print';
 import { PRINT_FIELDS, PRINT_VALUE_NAMES } from '../domain/printLabels';
@@ -53,6 +54,8 @@ function describePrint(key: string, c: Change): Description {
   };
 }
 
+const PATTERN_NAMES = Object.fromEntries(PATTERN_KINDS) as Record<PatternKind, string>;
+
 function describeTexture(
   id: string,
   field: string,
@@ -87,6 +90,14 @@ function describeTexture(
       label = 'Invert';
       detail = arrow(c);
       break;
+    case 'maskPattern': {
+      label = 'Mask pattern';
+      const kind = (v: unknown) =>
+        v ? (PATTERN_NAMES[(v as { kind: PatternKind }).kind] ?? 'pattern') : 'none';
+      const [a, b] = [kind(c.before), kind(c.after)];
+      detail = a === b ? 'edited' : `${a} → ${b}`;
+      break;
+    }
     case 'curveV':
       label = 'Outdent over height';
       detail = 'curve edited';

@@ -1,4 +1,4 @@
-import type { FloorPattern, PrintMode, TopCurves } from '../core/types';
+import type { FloorPattern, InfillPattern, PrintMode, TopCurves } from '../core/types';
 import type { PrintSettings } from './print';
 
 /** The names the editor shows for the print settings; the change history uses the same ones. */
@@ -14,6 +14,11 @@ export const PRINT_FIELDS: Record<keyof PrintSettings, PrintFieldLabel> = {
   topFinish: { label: 'Flat finishing ring at the top' },
   topCurves: { label: 'Non-planar top' },
   topAngle: { label: 'Top surface tilt', unit: '°' },
+  wallCount: { label: 'Wall loops' },
+  infillDensity: { label: 'Infill', unit: '%' },
+  infillPattern: { label: 'Infill pattern' },
+  infillAngle: { label: 'Infill angle', unit: '°' },
+  solidTop: { label: 'Solid top layers' },
   retractDistance: { label: 'Retraction', unit: 'mm' },
   retractSpeed: { label: 'Retraction speed', unit: 'mm/s' },
   zHop: { label: 'Z hop on travel moves', unit: 'mm' },
@@ -41,6 +46,14 @@ export const MODES: readonly (readonly [PrintMode, string])[] = [
 export const TOP_CURVES: readonly (readonly [TopCurves, string])[] = [
   ['closed', 'Close the curves (as sliced)'],
   ['open', 'Open lines, travel on the outside'],
+  ['follow', 'Follow the top (layer height varies)'],
+];
+
+export const INFILL_PATTERNS: readonly (readonly [InfillPattern, string])[] = [
+  ['lines', 'Lines (turn 90° each layer)'],
+  ['grid', 'Grid'],
+  ['triangles', 'Triangles'],
+  ['gyroid', 'Gyroid (waves, shifts each layer)'],
 ];
 
 export const FLOOR_PATTERNS: readonly (readonly [FloorPattern, string])[] = [
@@ -55,4 +68,5 @@ export const PRINT_VALUE_NAMES: Partial<Record<keyof PrintSettings, Record<strin
   mode: Object.fromEntries(MODES),
   topCurves: Object.fromEntries(TOP_CURVES),
   floorPattern: Object.fromEntries(FLOOR_PATTERNS),
+  infillPattern: Object.fromEntries(INFILL_PATTERNS),
 };

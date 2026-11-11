@@ -1,13 +1,22 @@
-import { centroid, findSeam, normals, resample, signedArea } from '../geometry/contour';
+import {
+  centroid,
+  curvatureAt,
+  findSeam,
+  normals,
+  resample,
+  signedArea,
+} from '../geometry/contour';
 import { angleU } from '../textures/mask';
 import {
   blobLift,
   dwellSeconds,
+  needsCurvature,
   radialOffset,
   twistAngle,
   type TexCtx,
 } from '../textures/textures';
-import { FEATURE_WALL, type SliceSettings } from '../types';
+import { FEATURE_INFILL, FEATURE_WALL, type SliceSettings } from '../types';
+import { infillSegments, linkInside, type Pt } from './infill';
 import { nominalWidth } from './bead';
 import type { PathBuilder } from './PathBuilder';
 import { floorBelowLayers, floorInsideLayers, type RingSet } from './rings';
@@ -23,6 +32,10 @@ interface Curve {
   cx: number;
   cy: number;
   n: number;
+  /** signed area of the original loop: > 0 outer wall, < 0 hole */
+  area: number;
+  /** an extra wall loop inside the first one: no textures, no top handling */
+  inner?: boolean;
 }
 
 /**
@@ -40,6 +53,7 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
   const zStart = F * h;
   const textures = s.textures;
   const liftMm = blobLift(textures);
+  const curved = needsCurvature(textures);
   const joinDist = 2.5 * nominalWidth(s);
   const seamRad = (s.seamAngle * Math.PI) / 180;
   const open = s.topCurves === 'open';
@@ -58,7 +72,16 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
       }
       const n = Math.min(4000, Math.max(8, Math.ceil(per / s.segLen)));
       const r = resample(loop.xy, findSeam(loop.xy, cx, cy, seamRad), n, loop.cap);
-      out.push({ xy: r.xy, nxy: normals(r.xy), cap: r.flag, perimeter: r.perimeter, cx, cy, n });
+      out.push({
+        xy: r.xy,
+        nxy: normals(r.xy),
+        cap: r.flag,
+        perimeter: r.perimeter,
+        cx,
+        cy,
+        n,
+        area: signedArea(loop.xy),
+      });
     }
     return out;
   };
@@ -95,8 +118,9 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
       v: zr / zmax,
       ang: Math.atan2(by - c.cy, bx - c.cx),
       rad: Math.hypot(bx - c.cx, by - c.cy),
+      curv: curved ? curvatureAt(c.nxy, kk, c.n, c.perimeter) : 0,
     };
-    const off = textures.length ? radialOffset(textures, ctx) : 0;
+    const off = textures.length && !c.inner ? radialOffset(textures, ctx) : 0;
     let x = bx + nx * off;
     let y = by + ny * off;
     const tw = textures.length ? twistAngle(textures, zr, H) : 0;
@@ -111,20 +135,50 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
       pushTravel(path, s, x, y, z, route);
       return;
     }
-    const dwell = textures.length ? dwellSeconds(textures, ctx, h, 1 / c.n) : 0;
+    const dwell = textures.length && !c.inner ? dwellSeconds(textures, ctx, h, 1 / c.n) : 0;
     path.push(x, y, z, FEATURE_WALL, speed, 0, dwell, dwell > 0 ? liftMm : 0);
+  };
+
+  const w = nominalWidth(s);
+  const walls = Math.max(1, Math.round(s.wallCount));
+  const solidFrom = L - Math.max(0, Math.round(s.solidTop));
+  // infill needs closed regions, so it is not combined with open top curves
+  const infillOn = s.infillDensity > 0 && !open;
+
+  /** the loop moved `d` into the material along its normals; null once it has collapsed */
+  const insetCurve = (c: Curve, d: number): Curve | null => {
+    const xy = new Float64Array(c.xy.length);
+    for (let k = 0; k < c.n; k++) {
+      xy[2 * k] = c.xy[2 * k] - c.nxy[2 * k] * d;
+      xy[2 * k + 1] = c.xy[2 * k + 1] - c.nxy[2 * k + 1] * d;
+    }
+    const area = signedArea(xy);
+    if (c.area > 0 && !(area > 2 * w * w && area < c.area)) return null;
+    let per = 0;
+    for (let k = 0; k < c.n; k++) {
+      const q = (k + 1) % c.n;
+      per += Math.hypot(xy[2 * q] - xy[2 * k], xy[2 * q + 1] - xy[2 * k + 1]);
+    }
+    return {
+      xy,
+      nxy: normals(xy),
+      cap: new Uint8Array(c.n),
+      perimeter: per,
+      cx: c.cx,
+      cy: c.cy,
+      n: c.n,
+      area,
+      inner: true,
+    };
   };
 
   /** the lines of a curve: its whole closed loop, or (open top) the stretches that are not top */
   const linesOf = (c: Curve): number[][] =>
-    open ? arcRuns(c.cap, c.n) : [Array.from({ length: c.n + 1 }, (_, k) => k)];
+    open && !c.inner ? arcRuns(c.cap, c.n) : [Array.from({ length: c.n + 1 }, (_, k) => k)];
 
-  for (let j = F; j < L; j++) {
-    const z = (j + 1) * h + zOff;
-    const todo: { c: Curve; runs: number[][] }[] = curvesOf(j).map((c) => ({
-      c,
-      runs: linesOf(c),
-    }));
+  /** print a set of curves of one layer, always going to the nearest start next */
+  const printCurves = (curves: Curve[], z: number) => {
+    const todo: { c: Curve; runs: number[][] }[] = curves.map((c) => ({ c, runs: linesOf(c) }));
     let lastC: Curve | null = null;
     let lastK = 0;
     for (;;) {
@@ -166,5 +220,54 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
       lastC = c;
       lastK = run[run.length - 1] % c.n;
     }
+  };
+
+  /** infill lines inside the innermost wall loops; gaps larger than one line spacing are travels */
+  const printInfill = (base: Curve[], j: number, z: number) => {
+    const d = (walls - 0.1) * w;
+    const polys: Pt[][] = [];
+    for (const c of base) {
+      const inset = d === 0 ? c : insetCurve(c, d);
+      if (!inset) continue;
+      const pts: Pt[] = [];
+      for (let k = 0; k < c.n; k++) pts.push([inset.xy[2 * k], inset.xy[2 * k + 1]]);
+      polys.push(pts);
+    }
+    if (!polys.length) return;
+    const density = j >= solidFrom ? 100 : s.infillDensity;
+    const { segs, spacing } = infillSegments(
+      polys,
+      s.infillPattern,
+      density,
+      w,
+      s.infillAngle,
+      j,
+      z,
+    );
+    for (const [p, q] of segs) {
+      const n = path.count - 1;
+      const gap =
+        n >= 0 ? Math.hypot(p[0] - path.xyz[3 * n], p[1] - path.xyz[3 * n + 1]) : Infinity;
+      const last: Pt = [path.xyz[3 * n], path.xyz[3 * n + 1]];
+      if (n >= 0 && gap < 1e-6 && path.feature[n] === FEATURE_INFILL) {
+        // continues the previous line
+      } else if (n < 0 || gap > 1.5 * spacing || !linkInside(last, p, polys))
+        pushTravel(path, s, p[0], p[1], z);
+      else path.push(p[0], p[1], z, FEATURE_INFILL, s.printSpeed);
+      path.push(q[0], q[1], z, FEATURE_INFILL, s.printSpeed);
+    }
+  };
+
+  for (let j = F; j < L; j++) {
+    const z = (j + 1) * h + zOff;
+    const base = curvesOf(j);
+    printCurves(base, z);
+    if (!open)
+      for (let i = 1; i < walls; i++) {
+        const wave = base.map((c) => insetCurve(c, i * w)).filter((c): c is Curve => c !== null);
+        if (!wave.length) break;
+        printCurves(wave, z);
+      }
+    if (infillOn) printInfill(base, j, z);
   }
 }

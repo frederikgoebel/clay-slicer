@@ -1,5 +1,11 @@
 import { useSettingsStore } from '../../store/settingsStore';
-import { FLOOR_PATTERNS, MODES, PRINT_FIELDS as F, TOP_CURVES } from '../../domain/printLabels';
+import {
+  FLOOR_PATTERNS,
+  INFILL_PATTERNS,
+  MODES,
+  PRINT_FIELDS as F,
+  TOP_CURVES,
+} from '../../domain/printLabels';
 import { SelectField, Section, Toggle } from '../ui/controls';
 import { Slider } from '../ui/Slider';
 
@@ -46,7 +52,7 @@ export function PrintPanel() {
           options={TOP_CURVES}
           onChange={(topCurves) => setPrint({ topCurves })}
         />
-        {print.topCurves === 'open' && (
+        {print.topCurves !== 'closed' && (
           <Slider
             label={F.topAngle.label}
             value={print.topAngle}
@@ -54,11 +60,62 @@ export function PrintPanel() {
             max={80}
             step={1}
             unit={F.topAngle.unit}
-            hint="Surfaces tilted up to this much from flat count as the top (the opening) and are not printed. Use for a slanted or curved rim."
+            hint="Surfaces tilted up to this much from flat count as the top (the opening). With open lines they are not printed; with follow the top the layers are stretched to end flush with them."
             onChange={(topAngle) => setPrint({ topAngle })}
           />
         )}
       </Section>
+      {print.mode === 'normal' && (
+        <Section title="Walls and infill" defaultOpen>
+          <Slider
+            label={F.wallCount.label}
+            value={print.wallCount}
+            min={1}
+            max={5}
+            step={1}
+            hint="Concentric wall loops around every outline. The outer one carries the textures. Loops that would collapse (thin walls) are left out."
+            onChange={(wallCount) => setPrint({ wallCount })}
+          />
+          <Slider
+            label={F.infillDensity.label}
+            value={print.infillDensity}
+            min={0}
+            max={100}
+            step={1}
+            unit={F.infillDensity.unit}
+            hint="Lines inside the walls, as a share of the area (0 = hollow). Not used together with open top curves."
+            onChange={(infillDensity) => setPrint({ infillDensity })}
+          />
+          {print.infillDensity > 0 && (
+            <>
+              <SelectField
+                label={F.infillPattern.label}
+                value={print.infillPattern}
+                options={INFILL_PATTERNS}
+                onChange={(infillPattern) => setPrint({ infillPattern })}
+              />
+              <Slider
+                label={F.infillAngle.label}
+                value={print.infillAngle}
+                min={0}
+                max={179}
+                step={1}
+                unit={F.infillAngle.unit}
+                onChange={(infillAngle) => setPrint({ infillAngle })}
+              />
+              <Slider
+                label={F.solidTop.label}
+                value={print.solidTop}
+                min={0}
+                max={10}
+                step={1}
+                hint="The last layers below the top of the model are filled solid (100%). Only the very top of the model, not ceilings inside it."
+                onChange={(solidTop) => setPrint({ solidTop })}
+              />
+            </>
+          )}
+        </Section>
+      )}
       <Section title="Travel moves">
         <Slider
           label={F.retractDistance.label}
