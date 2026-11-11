@@ -140,7 +140,8 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
   };
 
   const w = nominalWidth(s);
-  const walls = Math.max(1, Math.round(s.wallCount));
+  // without walls the infill is all there is, so it needs to be switched on
+  const walls = Math.max(s.infillDensity > 0 && !open ? 0 : 1, Math.round(s.wallCount));
   const solidFrom = L - Math.max(0, Math.round(s.solidTop));
   // infill needs closed regions, so it is not combined with open top curves
   const infillOn = s.infillDensity > 0 && !open;
@@ -224,7 +225,7 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
 
   /** infill lines inside the innermost wall loops; gaps larger than one line spacing are travels */
   const printInfill = (base: Curve[], j: number, z: number) => {
-    const d = (walls - 0.1) * w;
+    const d = walls === 0 ? 0.5 * w : (walls - 0.1) * w;
     const polys: Pt[][] = [];
     for (const c of base) {
       const inset = d === 0 ? c : insetCurve(c, d);
@@ -261,7 +262,7 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
   for (let j = F; j < L; j++) {
     const z = (j + 1) * h + zOff;
     const base = curvesOf(j);
-    printCurves(base, z);
+    if (walls > 0) printCurves(base, z);
     if (!open)
       for (let i = 1; i < walls; i++) {
         const wave = base.map((c) => insetCurve(c, i * w)).filter((c): c is Curve => c !== null);

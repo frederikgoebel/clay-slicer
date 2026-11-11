@@ -133,3 +133,15 @@ describe('gyroid infill', () => {
     expect(r.feature.includes(FEATURE_INFILL)).toBe(true);
   });
 });
+
+describe('no walls and infill scale', () => {
+  const run = (o: object) =>
+    runPipeline(cylinder(30, 20), testSettings({ mode: 'normal', infillDensity: 20, ...o }));
+  it('wallCount 0 prints only infill (after the floor), and still walls without infill', () => {
+    const r = run({ wallCount: 0 });
+    const after = r.feature.slice(r.feature.indexOf(FEATURE_INFILL));
+    expect(after.includes(FEATURE_WALL)).toBe(false);
+    expect(after.includes(FEATURE_INFILL)).toBe(true);
+    expect(run({ wallCount: 0, infillDensity: 0 }).feature.includes(FEATURE_WALL)).toBe(true);
+  });
+});

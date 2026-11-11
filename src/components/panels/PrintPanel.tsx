@@ -70,10 +70,10 @@ export function PrintPanel() {
           <Slider
             label={F.wallCount.label}
             value={print.wallCount}
-            min={1}
+            min={0}
             max={5}
             step={1}
-            hint="Concentric wall loops around every outline. The outer one carries the textures. Loops that would collapse (thin walls) are left out."
+            hint="Concentric wall loops around every outline. The outer one carries the textures. 0 = no walls, only infill (textures then have nothing to act on; needs infill above 0). Loops that would collapse (thin walls) are left out."
             onChange={(wallCount) => setPrint({ wallCount })}
           />
           <Slider

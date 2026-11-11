@@ -149,7 +149,7 @@ export function gyroidSegments(
     }
   if (!(x1 > x0 && y1 > y0)) return [];
   // grid anchored at the origin so the pattern lines up from layer to layer
-  const step = Math.max(0.4, Math.min(period / 24, 2));
+  const step = Math.max(0.6, Math.min(period / 14, 2.5));
   const i0 = Math.floor(x0 / step) - 1;
   const j0 = Math.floor(y0 / step) - 1;
   const nx = Math.ceil((x1 - x0) / step) + 3;
@@ -255,12 +255,14 @@ export function gyroidSegments(
     if (run.length > 1) runs.push(run);
   }
   const minLen = width * 0.5;
-  const kept = runs.filter((r) => {
-    let l = 0;
-    for (let i = 1; i < r.length; i++)
-      l += Math.hypot(r[i][0] - r[i - 1][0], r[i][1] - r[i - 1][1]);
-    return l > minLen;
-  });
+  const kept = runs
+    .map((r) => simplify(r, 0.12))
+    .filter((r) => {
+      let l = 0;
+      for (let i = 1; i < r.length; i++)
+        l += Math.hypot(r[i][0] - r[i - 1][0], r[i][1] - r[i - 1][1]);
+      return l > minLen;
+    });
   // nearest-neighbour order, reversing a run when its far end is closer
   const out: [Pt, Pt][] = [];
   let at: Pt = kept.length ? kept[0][0] : [0, 0];
@@ -281,4 +283,31 @@ export function gyroidSegments(
     at = r[r.length - 1];
   }
   return out;
+}
+
+/** Douglas-Peucker: drops points that lie within `tol` mm of the straight line between the kept ones. */
+function simplify(pts: Pt[], tol: number): Pt[] {
+  const n = pts.length;
+  if (n < 3) return pts;
+  const keep = new Uint8Array(n);
+  keep[0] = keep[n - 1] = 1;
+  const stack: [number, number][] = [[0, n - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop()!;
+    const [ax, ay] = pts[a];
+    const dx = pts[b][0] - ax;
+    const dy = pts[b][1] - ay;
+    const len = Math.hypot(dx, dy) || 1e-9;
+    let far = -1;
+    let fd = tol;
+    for (let i = a + 1; i < b; i++) {
+      const d = Math.abs((pts[i][0] - ax) * dy - (pts[i][1] - ay) * dx) / len;
+      if (d > fd) [fd, far] = [d, i];
+    }
+    if (far >= 0) {
+      keep[far] = 1;
+      stack.push([a, far], [far, b]);
+    }
+  }
+  return pts.filter((_, i) => keep[i]);
 }
