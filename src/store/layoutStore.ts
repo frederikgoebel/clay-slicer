@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { safeJsonStorage } from './storage';
 
-export type PanelId = 'profiles' | 'model' | 'textures';
+export type PanelId = 'project' | 'profiles' | 'model' | 'textures';
 export type DockSide = 'left' | 'right';
 export type Place = DockSide | 'float';
 
@@ -13,8 +13,9 @@ export interface FloatRect {
   h: number;
 }
 
-export const PANEL_ORDER: PanelId[] = ['profiles', 'model', 'textures'];
+export const PANEL_ORDER: PanelId[] = ['project', 'profiles', 'model', 'textures'];
 export const PANEL_TITLES: Record<PanelId, string> = {
+  project: 'Project',
   profiles: 'Print Setup',
   model: 'STL or Design',
   textures: 'Textures',
@@ -45,7 +46,10 @@ interface LayoutState {
 const defaultRect = (i: number): FloatRect => ({ x: 120 + i * 36, y: 90 + i * 36, w: 360, h: 520 });
 
 const initial = () => ({
-  place: { profiles: 'left', model: 'left', textures: 'left' } as Record<PanelId, Place>,
+  place: { project: 'left', profiles: 'left', model: 'left', textures: 'left' } as Record<
+    PanelId,
+    Place
+  >,
   rect: Object.fromEntries(PANEL_ORDER.map((id, i) => [id, defaultRect(i)])) as Record<
     PanelId,
     FloatRect

@@ -24,6 +24,7 @@ ctx.onmessage = (e: MessageEvent<SliceRequest>) => {
       result.dwell.buffer,
       result.lift.buffer,
       result.thick.buffer,
+      result.flow.buffer,
     ]);
   } catch (err) {
     const reply: SliceResponse = { id, error: err instanceof Error ? err.message : String(err) };

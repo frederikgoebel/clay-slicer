@@ -121,7 +121,7 @@ export function buildGcode(r: ToolpathResult, s: SliceSettings, name = 'model'):
       const len = Math.hypot(x - xyz[3 * i - 3], y - xyz[3 * i - 2], z - xyz[3 * i - 1]);
       // thinner or thicker layers (follow the top) carry less or more clay per mm
       const flow = beadArea(nw, r.thick[i]) / beadArea(nw, s.layerHeight);
-      e += len * ePerMm * flow;
+      e += len * ePerMm * flow * (r.flow?.[i] ?? 1);
       out.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(z)} E${e.toFixed(4)}${fPart}`);
     }
     if (r.dwell[i] > 0) {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { patternMask, DEFAULT_PATTERN } from '../src/core/textures/noise';
+import { lathe } from '../src/core/samples';
 import { infillSegments } from '../src/core/toolpath/infill';
 import { runPipeline } from '../src/core/toolpath/pipeline';
 import { FEATURE_INFILL, FEATURE_WALL } from '../src/core/types';
@@ -143,5 +144,48 @@ describe('no walls and infill scale', () => {
     expect(after.includes(FEATURE_WALL)).toBe(false);
     expect(after.includes(FEATURE_INFILL)).toBe(true);
     expect(run({ wallCount: 0, infillDensity: 0 }).feature.includes(FEATURE_WALL)).toBe(true);
+  });
+});
+
+describe('overhang in standard layers', () => {
+  const normal = (o = {}) => testSettings({ mode: 'normal', layerHeight: 1, ...o });
+  it('measures the outward step against the layer below, like the other modes', () => {
+    const bowl = lathe((z) => 30 + z * 0.8, 40, 80, 96); // wall leans out at atan(0.8) = 38.7 degrees
+    const std = runPipeline(bowl, normal());
+    expect(std.stats.maxOverhangDeg).toBeGreaterThan(36);
+    expect(std.stats.maxOverhangDeg).toBeLessThan(42);
+    expect(std.warnings.some((w) => w.startsWith('Overhang'))).toBe(true);
+    const spiral = runPipeline(bowl, testSettings({ layerHeight: 1 }));
+    expect(Math.abs(std.stats.maxOverhangDeg - spiral.stats.maxOverhangDeg)).toBeLessThan(4);
+  });
+  it('finds none on straight walls, with inner walls and infill too', () => {
+    const r = runPipeline(cylinder(30, 30), normal({ wallCount: 2, infillDensity: 20 }));
+    expect(r.stats.maxOverhangDeg).toBeLessThan(1);
+    expect(r.warnings.some((w) => w.startsWith('Overhang'))).toBe(false);
+  });
+  it('counts a hole that closes in towards the top as an overhang', () => {
+    const n = 64;
+    const out: number[] = [];
+    const tri = (a: number[], b: number[], c: number[]) => out.push(...a, ...b, ...c);
+    const hole = (z: number) => 14 - z * 0.4; // the hole narrows: material leans into it
+    const P = (rad: number, i: number, z: number) => [
+      rad * Math.cos((2 * Math.PI * i) / n),
+      rad * Math.sin((2 * Math.PI * i) / n),
+      z,
+    ];
+    const h = 30;
+    for (let i = 0; i < n; i++) {
+      tri(P(30, i, 0), P(30, i + 1, 0), P(30, i + 1, h));
+      tri(P(30, i, 0), P(30, i + 1, h), P(30, i, h));
+      tri(P(hole(0), i, 0), P(hole(h), i + 1, h), P(hole(0), i + 1, 0));
+      tri(P(hole(0), i, 0), P(hole(h), i, h), P(hole(h), i + 1, h));
+      tri(P(hole(h), i, h), P(30, i, h), P(30, i + 1, h));
+      tri(P(hole(h), i, h), P(30, i + 1, h), P(hole(h), i + 1, h));
+      tri(P(hole(0), i, 0), P(30, i, 0), P(30, i + 1, 0));
+      tri(P(hole(0), i, 0), P(30, i + 1, 0), P(hole(0), i + 1, 0));
+    }
+    const r = runPipeline(Float32Array.from(out), normal());
+    expect(r.stats.maxOverhangDeg).toBeGreaterThan(18);
+    expect(r.stats.maxOverhangDeg).toBeLessThan(24);
   });
 });

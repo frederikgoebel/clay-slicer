@@ -264,3 +264,49 @@ export function mergeProfiles<K extends ProfileKind>(
   }
   return { list, idMap };
 }
+
+/** What opening a project does with one of its profiles. */
+export type ProfileAction =
+  /** this profile is already in the list: nothing to do, just use it */
+  | { kind: 'same'; id: string }
+  /** a new profile: add it */
+  | { kind: 'add' }
+  /** a profile of the same name with other values: overwrite it */
+  | { kind: 'replace'; id: string };
+
+export function planProfile<K extends ProfileKind>(
+  existing: ProfileMap[K][],
+  p: ProfileMap[K],
+): ProfileAction {
+  const same = existing.find((e) => e.id === p.id && sameValues(e, p));
+  if (same) return { kind: 'same', id: same.id };
+  const twin = existing.find((e) => e.name === p.name && sameValues({ ...e, id: p.id }, p));
+  if (twin) return { kind: 'same', id: twin.id };
+  // built-in profiles are never overwritten
+  const named = existing.find((e) => e.name === p.name && !e.builtin);
+  if (named) return { kind: 'replace', id: named.id };
+  return { kind: 'add' };
+}
+
+/** Carry out a plan: the new list and the id of the profile the project should use. */
+export function applyProfilePlan<K extends ProfileKind>(
+  existing: ProfileMap[K][],
+  p: ProfileMap[K],
+  action: ProfileAction,
+): { list: ProfileMap[K][]; id: string } {
+  if (action.kind === 'same') return { list: existing, id: action.id };
+  if (action.kind === 'replace')
+    return {
+      list: existing.map((e) => (e.id === action.id ? { ...p, id: e.id, builtin: false } : e)),
+      id: action.id,
+    };
+  const taken = existing.some((e) => e.id === p.id);
+  const nameTaken = existing.some((e) => e.name === p.name);
+  const copy = {
+    ...p,
+    id: taken ? uid() : p.id,
+    builtin: false,
+    name: nameTaken ? `${p.name} (project)` : p.name,
+  };
+  return { list: [...existing, copy], id: copy.id };
+}

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { MASK_H, MASK_W } from '../core/textures/mask';
 import type { ShapeSection } from '../core/shape/shape';
 import type { Mask, TextureLayer } from '../core/types';
-import { diffDocs, History, type Doc } from '../domain/history';
+import { diffDocs, History, type Doc, type SavedHistory } from '../domain/history';
 import type { PrintSettings } from '../domain/print';
 import { describeChanges } from './changeLabels';
 import { PROFILE_KINDS, type ProfileKind, type ProfileMap } from '../domain/profiles';
@@ -225,4 +225,30 @@ export function startHistory(): void {
   useModelStore.subscribe((s, p) => {
     if (s.shape !== p.shape || s.loadCount !== p.loadCount) changed();
   });
+}
+
+/** Forget all steps (a different project was opened or started). */
+export function resetHistory(): void {
+  history.clear();
+  maskCache = new Map();
+  lastLoad = useModelStore.getState().loadCount;
+  prev = snapshot();
+  publish();
+}
+
+/** The steps so far, for the project file. */
+export const exportHistory = (): SavedHistory => history.save();
+
+/**
+ * Bring back the steps stored in a project file (call right after the project itself was put
+ * into the stores). Steps about profiles are dropped: the profiles of a file may have been
+ * skipped or renamed on import, so undoing them could remove profiles that are in use.
+ */
+export function importHistory(saved: SavedHistory): void {
+  history.clear();
+  if (history.restore(saved))
+    history.forget(
+      (k) => k.startsWith('profile.') || k.startsWith('profileOrder.') || k.startsWith('selected.'),
+    );
+  publish();
 }

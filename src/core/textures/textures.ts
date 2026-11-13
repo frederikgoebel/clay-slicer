@@ -144,7 +144,7 @@ export function radialOffset(layers: TextureLayer[], c: TexCtx): number {
   if (gate === 0) return 0;
   let off = 0;
   for (const l of layers) {
-    if (!l.enabled || l.type === 'twist' || l.type === 'blobs') continue;
+    if (!l.enabled || l.type === 'twist' || l.type === 'blobs' || l.type === 'flow') continue;
     let m = heightMask(l, c.z, c.H);
     if (m === 0) continue;
     m *= maskValue(l, c);
@@ -237,3 +237,31 @@ export function blobLift(layers: TextureLayer[]): number {
   for (const l of layers) if (l.enabled && l.type === 'blobs') lift = Math.max(lift, l.lift ?? 0);
   return lift;
 }
+
+/**
+ * Extrusion multiplier at this point (1 = unchanged) from the 'flow' layers: each adds
+ * amplitude % (positive = more clay, negative = less) times its pattern, height range and masks.
+ * The pattern is constant, or a sine around / up the object when `count` or `wavelength` is set.
+ */
+export function flowFactor(layers: TextureLayer[], c: TexCtx): number {
+  if (c.z < c.zStart) return 1;
+  const gate = c.fadeIn > 0 ? smooth((c.z - c.zStart) / c.fadeIn) : 1;
+  let f = 1;
+  for (const l of layers) {
+    if (!l.enabled || l.type !== 'flow' || l.amplitude === 0) continue;
+    let m = heightMask(l, c.z, c.H) * gate;
+    if (m === 0) continue;
+    m *= maskValue(l, c);
+    if (m === 0) continue;
+    const wavy = l.count > 0 || l.wavelength > 0;
+    const v = wavy
+      ? Math.sin(TAU * (l.count * c.t + (l.wavelength > 0 ? c.z / l.wavelength : 0)))
+      : 1;
+    f += (l.amplitude / 100) * v * m;
+  }
+  return Math.max(0.05, f);
+}
+
+/** True when any enabled layer changes the extrusion rate. */
+export const hasFlow = (layers: TextureLayer[]): boolean =>
+  layers.some((l) => l.enabled && l.type === 'flow' && l.amplitude !== 0);

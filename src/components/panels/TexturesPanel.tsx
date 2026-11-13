@@ -15,6 +15,13 @@ import { DEFAULT_PATTERN, PATTERN_KINDS } from '../../core/textures/noise';
 import type { MaskPattern, PatternKind } from '../../core/types';
 import { useImageStore } from '../../store/imageStore';
 import { useMaskStore } from '../../store/maskStore';
+import {
+  copyStack,
+  copyTexture,
+  duplicateTexture,
+  pasteTextures,
+} from '../../actions/textureActions';
+import { useTextureClipboard } from '../../store/textureClipboard';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useUiStore } from '../../store/uiStore';
 import { Button, Section, Segmented, SelectField, Toggle } from '../ui/controls';
@@ -316,6 +323,51 @@ function PatternTools({ tex }: { tex: TextureLayer }) {
   );
 }
 
+const ICONS = {
+  duplicate: 'M5.5 5.5h7v7h-7zM3.5 10.5v-7h7',
+  copy: 'M6 3h4M5 4.500h6v9H5zM7 3a1 1 0 0 1 2 0',
+  paste: 'M6 3h4M4.500 4.500h7v9h-7zM7 3a1 1 0 0 1 2 0M6.500 9h3M8 7.500v3',
+} as const;
+
+function IconButton({
+  icon,
+  label,
+  title,
+  disabled,
+  onClick,
+}: {
+  icon: keyof typeof ICONS;
+  label: string;
+  title: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={styles.iconBtn}
+      title={title}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <svg
+        viewBox="0 0 16 16"
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d={ICONS[icon]} />
+      </svg>
+    </button>
+  );
+}
+
 function TextureCard({ tex, drag }: { tex: TextureLayer; drag: DragApi }) {
   const patch = useSettingsStore((s) => s.patchTexture);
   const remove = useSettingsStore((s) => s.removeTexture);
@@ -327,8 +379,9 @@ function TextureCard({ tex, drag }: { tex: TextureLayer; drag: DragApi }) {
   const collapsed = useUiStore((s) => Boolean(s.collapsedTex[tex.id]));
   const setCollapsed = useUiStore((s) => s.setTexCollapsed);
   const hasImage = useImageStore((s) => Boolean(s.images[tex.id]));
+  const clipCount = useTextureClipboard((s) => s.items.length);
   const fileId = useId();
-  const layered = tex.type !== 'twist' && tex.type !== 'blobs';
+  const layered = tex.type !== 'twist' && tex.type !== 'blobs' && tex.type !== 'flow';
 
   return (
     <div className={styles.tex} data-texcard>
@@ -371,6 +424,29 @@ function TextureCard({ tex, drag }: { tex: TextureLayer; drag: DragApi }) {
           onChange={(e) => patch(tex.id, { enabled: e.target.checked })}
         />
         <strong>{TEXTURE_NAMES[tex.type]}</strong>
+        <IconButton
+          icon="duplicate"
+          label={`Duplicate ${TEXTURE_NAMES[tex.type]}`}
+          title="Duplicate (a copy right below, with its masks and pictures)"
+          onClick={() => duplicateTexture(tex.id)}
+        />
+        <IconButton
+          icon="copy"
+          label={`Copy ${TEXTURE_NAMES[tex.type]}`}
+          title="Copy this texture, to paste it here or in another project"
+          onClick={() => copyTexture(tex.id)}
+        />
+        <IconButton
+          icon="paste"
+          label="Paste below"
+          title={
+            clipCount
+              ? `Paste the copied texture${clipCount > 1 ? 's' : ''} below this one`
+              : 'Nothing copied yet'
+          }
+          disabled={clipCount === 0}
+          onClick={() => pasteTextures(tex.id)}
+        />
         <button
           type="button"
           className={styles.x}
@@ -509,6 +585,7 @@ export function TexturesPanel() {
   const print = useSettingsStore((s) => s.print);
   const setPrint = useSettingsStore((s) => s.setPrint);
   const moveTo = useSettingsStore((s) => s.moveTextureTo);
+  const clipCount = useTextureClipboard((s) => s.items.length);
   const [dragId, setDragId] = useState<string | null>(null);
   /** insertion position (0..length) shown while dragging */
   const [drop, setDrop] = useState<number | null>(null);
@@ -570,6 +647,28 @@ export function TexturesPanel() {
             />
           </div>
         ))}
+      </div>
+      <div className={styles.stackActions}>
+        <Button
+          small
+          disabled={textures.length === 0}
+          title="Copy all textures of this project, to paste them into another one"
+          onClick={copyStack}
+        >
+          Copy stack
+        </Button>
+        <Button
+          small
+          disabled={clipCount === 0}
+          title={
+            clipCount
+              ? `Paste the ${clipCount} copied texture${clipCount > 1 ? 's' : ''} at the end of the stack`
+              : 'Nothing copied yet'
+          }
+          onClick={() => pasteTextures()}
+        >
+          Paste stack{clipCount > 1 ? ` (${clipCount})` : ''}
+        </Button>
       </div>
       <select
         aria-label="Add texture"

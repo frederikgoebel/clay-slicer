@@ -4,6 +4,7 @@ import {
   blobLift,
   dwellSeconds,
   needsCurvature,
+  flowFactor,
   radialOffset,
   twistAngle,
   type TexCtx,
@@ -108,12 +109,24 @@ export function addWall(path: PathBuilder, set: RingSet, s: SliceSettings): void
     const dwell = textures.length ? dwellSeconds(textures, ctx, h, 1 / N) : 0;
     // without a floor the path starts here, with a travel to the first point
     const lift = dwell > 0 ? liftMm : 0;
+    const flow = textures.length ? flowFactor(textures, ctx) : 1;
     if (travel) {
       pushTravel(path, s, x, y, z, route);
       idx++;
       return;
     }
-    path.push(x, y, z, path.count === 0 ? FEATURE_TRAVEL : feature, speed, overhang, dwell, lift);
+    path.push(
+      x,
+      y,
+      z,
+      path.count === 0 ? FEATURE_TRAVEL : feature,
+      speed,
+      overhang,
+      dwell,
+      lift,
+      undefined,
+      flow,
+    );
     idx++;
   };
 

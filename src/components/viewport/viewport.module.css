@@ -28,3 +28,70 @@
   border: 1px solid #ff8a4c;
   border-radius: 6px;
 }
+
+.cubeWrap {
+  position: absolute;
+  right: 28px;
+  bottom: 76px;
+  width: 56px;
+  height: 56px;
+  perspective: 260px;
+  pointer-events: none;
+}
+.cubeScene {
+  position: relative;
+  transform-style: preserve-3d;
+}
+.cube {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+.cubeFace {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0;
+  border: 1px solid #7a6048;
+  background: #d9c7b0;
+  color: #2a1f18;
+  font:
+    600 11px/1 system-ui,
+    sans-serif;
+  cursor: pointer;
+  pointer-events: auto;
+  backface-visibility: hidden;
+}
+.cubeFace {
+  touch-action: none;
+  user-select: none;
+}
+.cubeFace {
+  overflow: visible;
+}
+.cubeHot {
+  position: absolute;
+  left: -22px;
+  top: -22px;
+  overflow: visible;
+  pointer-events: none;
+}
+.hotLine {
+  fill: none;
+  stroke: rgb(232 116 42 / 0.85);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.hotFace {
+  fill: rgb(232 116 42 / 0.42);
+  stroke: none;
+}
+.hotDot {
+  fill: rgb(232 116 42 / 0.85);
+}

@@ -2,6 +2,7 @@ import { angleU } from '../textures/mask';
 import {
   dwellSeconds,
   needsCurvature,
+  flowFactor,
   radialOffset,
   twistAngle,
   type TexCtx,
@@ -277,6 +278,7 @@ export function addVariableWall(path: PathBuilder, set: RingSet, s: SliceSetting
       dwell,
       dwell > 0 ? liftMm : 0,
       th,
+      textures.length ? flowFactor(textures, ctx) : 1,
     );
     idx++;
   };

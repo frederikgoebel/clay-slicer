@@ -219,3 +219,132 @@
   border: 1px solid rgba(255, 255, 255, 0.25);
   vertical-align: baseline;
 }
+
+.fieldLabel {
+  font-size: 12px;
+  color: var(--dim);
+}
+.textInput {
+  width: 100%;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  min-height: 34px;
+}
+.projectList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.projectList li {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: var(--panel-2);
+}
+.projectList li.projectCurrent {
+  border-color: var(--accent);
+}
+.projectName {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.projectName em {
+  font-weight: 400;
+  font-style: normal;
+  color: var(--dim);
+}
+.projectMeta {
+  font-size: 12px;
+  color: var(--dim);
+  margin: 2px 0 6px;
+}
+
+.iconBtn {
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+  border-radius: 4px;
+}
+.iconBtn:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--panel-2);
+}
+.iconBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.stackActions {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+}
+.projectHead {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.projectIcon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  color: var(--accent-2);
+}
+.projectTab {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.projectNote {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  border-radius: var(--radius);
+  color: var(--accent-2);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.projectMain {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.projectMain > :first-child {
+  flex: 1;
+  min-height: 40px;
+}
+.projectBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.projectBar h3 {
+  margin: 0;
+  font-size: 13px;
+}
+.projectBarActions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.fileBtnSmall {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12.5px;
+}

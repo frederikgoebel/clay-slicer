@@ -10,6 +10,7 @@ import { angleU } from '../textures/mask';
 import {
   blobLift,
   dwellSeconds,
+  flowFactor,
   needsCurvature,
   radialOffset,
   twistAngle,
@@ -18,6 +19,7 @@ import {
 import { FEATURE_INFILL, FEATURE_WALL, type SliceSettings } from '../types';
 import { infillSegments, linkInside, type Pt } from './infill';
 import { nominalWidth } from './bead';
+import { overhangAngle, SegmentGrid, type Poly } from './overhang';
 import type { PathBuilder } from './PathBuilder';
 import { floorBelowLayers, floorInsideLayers, type RingSet } from './rings';
 import { arcRuns, outsideRoute, pushTravel, TRAVEL_CLEAR } from './travel';
@@ -58,6 +60,20 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
   const seamRad = (s.seamAngle * Math.PI) / 180;
   const open = s.topCurves === 'open';
   let idx = 0;
+  // printed wall lines of the layer below (outer and inner walls apart) and of this layer
+  let below: { outer: SegmentGrid; inner: SegmentGrid } | null = null;
+  let rec: { outer: Poly[]; inner: Poly[] } = { outer: [], inner: [] };
+  let recC: Curve | null = null;
+  let recK = -1;
+
+  /** remember the printed wall line for the next layer (a new line after a jump or a different curve) */
+  const record = (c: Curve, kk: number, x: number, y: number, jump: boolean) => {
+    const lines = c.inner ? rec.inner : rec.outer;
+    if (jump || recC !== c || kk !== (recK + 1) % c.n || lines.length === 0) lines.push([]);
+    lines[lines.length - 1].push([x, y]);
+    recC = c;
+    recK = kk;
+  };
 
   const curvesOf = (j: number): Curve[] => {
     const out: Curve[] = [];
@@ -133,10 +149,24 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
     idx++;
     if (travel) {
       pushTravel(path, s, x, y, z, route);
+      record(c, kk, x, y, true);
       return;
     }
     const dwell = textures.length && !c.inner ? dwellSeconds(textures, ctx, h, 1 / c.n) : 0;
-    path.push(x, y, z, FEATURE_WALL, speed, 0, dwell, dwell > 0 ? liftMm : 0);
+    const overhang = overhangAngle(below && (c.inner ? below.inner : below.outer), x, y, nx, ny, h);
+    path.push(
+      x,
+      y,
+      z,
+      FEATURE_WALL,
+      speed,
+      overhang,
+      dwell,
+      dwell > 0 ? liftMm : 0,
+      undefined,
+      textures.length && !c.inner ? flowFactor(textures, ctx) : 1,
+    );
+    record(c, kk, x, y, false);
   };
 
   const w = nominalWidth(s);
@@ -262,6 +292,8 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
   for (let j = F; j < L; j++) {
     const z = (j + 1) * h + zOff;
     const base = curvesOf(j);
+    rec = { outer: [], inner: [] };
+    recC = null;
     if (walls > 0) printCurves(base, z);
     if (!open)
       for (let i = 1; i < walls; i++) {
@@ -270,5 +302,6 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
         printCurves(wave, z);
       }
     if (infillOn) printInfill(base, j, z);
+    below = { outer: new SegmentGrid(rec.outer), inner: new SegmentGrid(rec.inner) };
   }
 }

@@ -6,6 +6,7 @@ import {
   useLayoutStore,
   type DockSide,
 } from '../../store/layoutStore';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { startPanelDrag } from './dragStore';
 import { PANEL_CONTENT } from './panelDefs';
 import styles from './dock.module.css';
@@ -75,7 +76,9 @@ export function Dock({ side }: { side: DockSide }) {
         ))}
       </div>
       <div className={styles.body}>
-        <Content />
+        <ErrorBoundary label={PANEL_TITLES[active]}>
+          <Content />
+        </ErrorBoundary>
       </div>
       <div
         className={`${styles.grip} ${side === 'left' ? styles.gripRight : styles.gripLeft}`}

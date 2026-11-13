@@ -25,6 +25,8 @@ interface ModelState {
   /** Switch between the STL and the design (creating a default design the first time). */
   setSource: (source: ModelSource) => void;
   setError: (message: string | null) => void;
+  /** Back to an empty project (no model, no design). */
+  clear: () => void;
 }
 
 /** Every section gets a stable id the first time it is stored (edits keep it). */
@@ -81,4 +83,14 @@ export const useModelStore = create<ModelState>()((set) => ({
       };
     }),
   setError: (error) => set({ error }),
+  clear: () =>
+    set((s) => ({
+      source: 'stl',
+      raw: null,
+      name: 'model',
+      stl: null,
+      shape: null,
+      loadCount: s.loadCount + 1,
+      error: null,
+    })),
 }));

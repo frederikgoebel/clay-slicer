@@ -38,6 +38,7 @@ export function runPipeline(pos: Float32Array, s: SliceSettings): ToolpathResult
     dwell: Float32Array.from(path.dwell),
     lift: Float32Array.from(path.lift),
     thick: Float32Array.from(path.thick),
+    flow: Float32Array.from(path.flow),
     pauseAt: path.pauseAt,
     stats,
     warnings: [

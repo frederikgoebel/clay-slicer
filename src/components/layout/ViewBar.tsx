@@ -23,6 +23,8 @@ const COLORS: readonly (readonly [ColorMode, string])[] = [
 export function ViewBar() {
   const view = useUiStore((s) => s.view);
   const colorMode = useUiStore((s) => s.colorMode);
+  const showBeads = useUiStore((s) => s.showBeads);
+  const setShowBeads = useUiStore((s) => s.setShowBeads);
   const setView = useUiStore((s) => s.setView);
   const setColorMode = useUiStore((s) => s.setColorMode);
   const result = useSliceStore((s) => s.result);
@@ -42,6 +44,19 @@ export function ViewBar() {
               </option>
             ))}
           </select>
+        </label>
+      )}
+      {view === 'layers' && result && (
+        <label
+          className={styles.inline}
+          title="Draw every bead at its real width and layer height instead of thin lines"
+        >
+          <input
+            type="checkbox"
+            checked={showBeads}
+            onChange={(e) => setShowBeads(e.target.checked)}
+          />
+          Bead size
         </label>
       )}
       {view === 'layers' && result && mode === 'thickness' && (

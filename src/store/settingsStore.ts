@@ -8,7 +8,9 @@ import {
   DEFAULT_SELECTION,
   PROFILE_KINDS,
   isHexColor,
+  applyProfilePlan,
   mergeProfiles,
+  planProfile,
   type ProfileKind,
   type ProfileLists,
   type ProfileMap,
@@ -32,6 +34,8 @@ interface SettingsState {
   addTexture: (type: TextureType) => string;
   patchTexture: (id: string, patch: Partial<Omit<TextureLayer, 'id' | 'type'>>) => void;
   removeTexture: (id: string) => void;
+  /** Insert ready-made layers (new ids) at a position in the stack. */
+  insertTextures: (layers: TextureLayer[], index: number) => void;
   /** Move a texture up (-1) or down (+1) in the layer order. */
   moveTexture: (id: string, dir: -1 | 1) => void;
   /** put a texture at this position in the list (0 = applied first) */
@@ -48,6 +52,8 @@ interface SettingsState {
     profiles: { [K in ProfileKind]: ProfileMap[K] },
     print: PrintSettings,
     textures: TextureLayer[],
+    /** 'import': add or replace the profiles that differ (see planProfile); 'skip': keep the current selection */
+    mode?: 'import' | 'skip',
   ) => void;
 }
 
@@ -134,6 +140,12 @@ export const useSettingsStore = create<SettingsState>()(
       },
       patchTexture: (id, patch) =>
         set((s) => ({ textures: s.textures.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
+      insertTextures: (layers, index) =>
+        set((s) => {
+          const textures = [...s.textures];
+          textures.splice(Math.max(0, Math.min(textures.length, index)), 0, ...layers);
+          return { textures };
+        }),
       removeTexture: (id) => set((s) => ({ textures: s.textures.filter((t) => t.id !== id) })),
       moveTexture: (id, dir) =>
         set((s) => {
@@ -180,17 +192,16 @@ export const useSettingsStore = create<SettingsState>()(
         });
         return maps;
       },
-      loadProject: (embedded, print, textures) =>
+      loadProject: (embedded, print, textures, mode = 'import') =>
         set((s) => {
           const profiles = { ...s.profiles };
           const selected = { ...s.selected };
-          for (const kind of PROFILE_KINDS) {
-            const { list, idMap } = mergeProfiles(
-              profiles[kind] as ProfileMap[typeof kind][],
-              [embedded[kind]] as ProfileMap[typeof kind][],
-            );
-            (profiles[kind] as ProfileMap[typeof kind][]) = list;
-            selected[kind] = idMap[embedded[kind].id];
+          for (const kind of mode === 'skip' ? [] : PROFILE_KINDS) {
+            const list = profiles[kind] as ProfileMap[typeof kind][];
+            const p = embedded[kind] as ProfileMap[typeof kind];
+            const done = applyProfilePlan(list, p, planProfile(list, p));
+            (profiles[kind] as ProfileMap[typeof kind][]) = done.list;
+            selected[kind] = done.id;
           }
           return { profiles, selected, print: { ...DEFAULT_PRINT, ...print }, textures };
         }),

@@ -49,6 +49,16 @@ export function diffDocs(prev: Doc, next: Doc): Map<string, Change> {
   return out;
 }
 
+/** A history as plain JSON plus the binary values (painted masks) it refers to by index. */
+export interface SavedHistory {
+  json: unknown;
+  blobs: Uint8Array[];
+}
+
+type Packed = { u: 1 } | { b: number } | { j: unknown };
+
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
+
 export class History {
   entries: HistoryEntry[] = [];
   /** steps taken back with Undo, newest last (what Redo re-applies) */
@@ -61,6 +71,13 @@ export class History {
     private readonly limit = 200,
     private readonly mergeMs = 700,
   ) {}
+
+  /** Drop every step (a different project is being worked on). */
+  clear(): void {
+    this.entries = [];
+    this.redoStack = [];
+    this.base = new Map();
+  }
 
   /**
    * Record a step. Quick successive edits of the same keys (a slider drag, one brush stroke)
@@ -170,5 +187,87 @@ export class History {
     return [...e.changes.keys()].every((k) =>
       this.entries.slice(idx + 1).some((o) => o.active && o.changes.has(k)),
     );
+  }
+
+  /** Everything needed to bring this history back later (keeps blobs shared between steps once). */
+  save(): SavedHistory {
+    const blobs: Uint8Array[] = [];
+    const seen = new Map<Uint8Array, number>();
+    const pack = (v: unknown): Packed => {
+      if (v === undefined) return { u: 1 };
+      if (v instanceof Uint8Array) {
+        let i = seen.get(v);
+        if (i === undefined) {
+          i = blobs.length;
+          blobs.push(v);
+          seen.set(v, i);
+        }
+        return { b: i };
+      }
+      return { j: v };
+    };
+    return {
+      blobs,
+      json: {
+        nextId: this.nextId,
+        redo: this.redoStack,
+        base: [...this.base].map(([k, v]) => [k, pack(v)]),
+        entries: this.entries.map((e) => ({
+          id: e.id,
+          t: e.t,
+          label: e.label,
+          detail: e.detail,
+          icons: e.icons,
+          active: e.active,
+          changes: [...e.changes].map(([k, c]) => [k, pack(c.before), pack(c.after)]),
+        })),
+      },
+    };
+  }
+
+  /** Replace this history with a saved one. Returns false (and leaves it empty) when it is damaged. */
+  restore(saved: SavedHistory): boolean {
+    this.clear();
+    try {
+      const j = saved.json;
+      if (!isObj(j) || !Array.isArray(j.entries)) return false;
+      const unpack = (p: unknown): unknown => {
+        if (!isObj(p)) throw new Error('bad value');
+        if ('u' in p) return undefined;
+        if ('b' in p) {
+          const blob = saved.blobs[p.b as number];
+          if (!blob) throw new Error('missing blob');
+          return Uint8Array.from(blob);
+        }
+        return p.j;
+      };
+      const entries: HistoryEntry[] = [];
+      for (const raw of j.entries as unknown[]) {
+        if (!isObj(raw) || !Array.isArray(raw.changes)) throw new Error('bad step');
+        const changes = new Map<string, Change>();
+        for (const c of raw.changes as unknown[][])
+          changes.set(String(c[0]), { before: unpack(c[1]), after: unpack(c[2]) });
+        entries.push({
+          id: Number(raw.id),
+          t: Number(raw.t) || 0,
+          label: String(raw.label ?? ''),
+          detail: String(raw.detail ?? ''),
+          icons: Array.isArray(raw.icons) ? raw.icons.map(String) : [],
+          active: raw.active !== false,
+          changes,
+        });
+      }
+      const base = new Map<string, unknown>();
+      if (Array.isArray(j.base))
+        for (const b of j.base as unknown[][]) base.set(String(b[0]), unpack(b[1]));
+      this.entries = entries;
+      this.base = base;
+      this.redoStack = Array.isArray(j.redo) ? (j.redo as unknown[]).map(Number) : [];
+      this.nextId = Math.max(Number(j.nextId) || 1, ...entries.map((e) => e.id + 1));
+      return true;
+    } catch {
+      this.clear();
+      return false;
+    }
   }
 }

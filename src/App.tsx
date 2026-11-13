@@ -1,7 +1,9 @@
 import { useEffect, useMemo } from 'react';
 import { openFile } from './actions/projectActions';
+import { restoreLastProject, startAutosave } from './actions/projectManager';
 import styles from './components/layout/layout.module.css';
 import { LayerBar } from './components/layout/LayerBar';
+import { ProjectProfilesDialog } from './components/layout/ProjectProfilesDialog';
 import { UnitsDialog } from './components/layout/UnitsDialog';
 import { Welcome } from './components/layout/Welcome';
 import { Dock } from './components/layout/Dock';
@@ -37,6 +39,12 @@ export default function App() {
       for (let i = 0; i < mesh.length; i += 3) r = Math.max(r, Math.hypot(mesh[i], mesh[i + 1]));
     return r;
   }, [mesh]);
+
+  // reopen the project that was open last, then save every change
+  useEffect(() => {
+    startAutosave();
+    void restoreLastProject();
+  }, []);
 
   // undo / redo: record changes from the start, Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z (or Ctrl+Y)
   useEffect(() => {
@@ -94,6 +102,7 @@ export default function App() {
           )}
           {!mesh && !unitsPending && <Welcome />}
           <UnitsDialog />
+          <ProjectProfilesDialog />
           <LayerBar />
         </main>
         <Dock side="right" />

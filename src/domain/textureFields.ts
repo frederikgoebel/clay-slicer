@@ -100,6 +100,35 @@ export const FIELDS: Record<TextureType, TexField[]> = {
     { key: 'hgt', label: 'Height', min: 5, max: 400, step: 1, unit: 'mm' },
     { key: 'rot', label: 'Rotation', min: -180, max: 180, step: 1, unit: '°' },
   ],
+  flow: [
+    {
+      key: 'amplitude',
+      label: 'More / less clay',
+      min: -90,
+      max: 200,
+      step: 1,
+      unit: '%',
+      hint: 'Change of the extrusion rate: +50 = half as much clay again, -50 = half as much. Wider beads where there is more, thinner where less. Combine with the pattern / paint mask to say where.',
+    },
+    {
+      key: 'count',
+      label: 'Alternate around',
+      min: 0,
+      max: 60,
+      step: 1,
+      unit: '×',
+      hint: 'More then less this many times around the object (0 = no alternation)',
+    },
+    {
+      key: 'wavelength',
+      label: 'Alternate in height',
+      min: 0,
+      max: 120,
+      step: 1,
+      unit: 'mm',
+      hint: 'More then less every this many mm of height (0 = no alternation)',
+    },
+  ],
   twist: [{ key: 'amplitude', label: 'Total twist', min: -720, max: 720, step: 5, unit: '°' }],
 };
 

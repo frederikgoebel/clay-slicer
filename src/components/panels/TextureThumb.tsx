@@ -1,49 +1,15 @@
 import { useEffect, useRef } from 'react';
-import { meshHeight } from '../../core/geometry/mesh';
-import { buildRings, type RingSet } from '../../core/toolpath/rings';
+import { hexRgb, previewRings } from '../../core/textures/preview';
 import { renderTextureThumb } from '../../core/textures/thumb';
-import type { SliceSettings, TextureLayer } from '../../core/types';
+import type { TextureLayer } from '../../core/types';
 import { useActiveProfile, useSliceSettings } from '../../hooks/useProfiles';
 import { useImageStore } from '../../store/imageStore';
 import { useMaskStore } from '../../store/maskStore';
 import { useMeshStore } from '../../store/meshStore';
 import styles from './panels.module.css';
 
-const ROWS = 64;
 const W = 112;
 const H = 112;
-
-const cache = new WeakMap<Float32Array, RingSet | null>();
-
-/** Coarse rings of the model, shared by all thumbnails; null if the model cannot be sliced. */
-function previewRings(mesh: Float32Array, s: SliceSettings): { set: RingSet; rowH: number } | null {
-  const rowH = meshHeight(mesh) / ROWS;
-  let set = cache.get(mesh);
-  if (set === undefined) {
-    try {
-      set = buildRings(mesh, {
-        ...s,
-        textures: [],
-        layerHeight: rowH,
-        floorLayers: 0,
-        floorBelow: false,
-        mode: 'spiral',
-        topCurves: 'closed',
-        segLen: 3,
-        seamAngle: 0,
-      });
-    } catch {
-      set = null;
-    }
-    cache.set(mesh, set);
-  }
-  return set ? { set, rowH } : null;
-}
-
-const hexRgb = (hex: string): [number, number, number] => {
-  const n = parseInt(hex.replace('#', ''), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-};
 
 /** The model with only this texture applied, as a small picture. */
 export function TextureThumb({ tex }: { tex: TextureLayer }) {

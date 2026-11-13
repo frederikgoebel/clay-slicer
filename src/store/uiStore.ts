@@ -18,6 +18,9 @@ interface PaintState {
 interface UiState {
   view: ViewMode;
   colorMode: ColorMode;
+  /** Layers view: draw the real bead size (width x layer height) instead of hairlines */
+  showBeads: boolean;
+  setShowBeads: (v: boolean) => void;
   /** layer shown up to (fractional); null = everything */
   layer: number | null;
   playing: boolean;
@@ -50,6 +53,8 @@ interface UiState {
 export const useUiStore = create<UiState>()((set) => ({
   view: 'model',
   colorMode: 'height',
+  showBeads: false,
+  setShowBeads: (showBeads) => set({ showBeads }),
   layer: null,
   playing: false,
   shapeSection: 0,

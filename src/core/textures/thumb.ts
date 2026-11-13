@@ -71,20 +71,22 @@ function blobBumps(set: RingSet, l: TextureLayer, o: ThumbOptions, H: number): F
 }
 
 /**
- * A small picture of the model with only this one texture applied: a front view of the wall,
+ * A small picture of the model with only this one texture applied (or with all the given ones, as a project icon): a front view of the wall,
  * lit from the upper left. `set` holds coarse rings of the model (see previewRings).
  * Returns RGBA pixels (transparent background).
  */
 export function renderTextureThumb(
   set: RingSet,
-  layer: TextureLayer,
+  layer: TextureLayer | TextureLayer[],
   o: ThumbOptions,
 ): Uint8ClampedArray<ArrayBuffer> {
   const { rings, N, layers: L } = set;
   const H = L * o.rowH;
-  const only: TextureLayer[] = [{ ...layer, enabled: true }];
+  const only: TextureLayer[] = Array.isArray(layer)
+    ? layer.filter((l) => l.enabled)
+    : [{ ...layer, enabled: true }];
   const curved = needsCurvature(only);
-  const blobs = layer.type === 'blobs' ? blobBumps(set, layer, o, H) : null;
+  const blobs = only.filter((l) => l.type === 'blobs').map((l) => blobBumps(set, l, o, H));
 
   // displaced wall points
   const P = new Float64Array(L * N * 3);
@@ -113,7 +115,7 @@ export function renderTextureThumb(
         curv: curved ? curvatureAt(A.nxy, k, N, A.perimeter) : 0,
       };
       let off = radialOffset(only, ctx);
-      if (blobs) off += blobs[j * N + k];
+      for (const b of blobs) off += b[j * N + k];
       let x = bx + A.nxy[2 * k] * off;
       let y = by + A.nxy[2 * k + 1] * off;
       if (tw !== 0) {

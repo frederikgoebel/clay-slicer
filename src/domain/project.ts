@@ -3,6 +3,7 @@ import { parseStl, writeStl } from '../core/io/stl';
 import { coerceShape, type ShapeSpec } from '../core/shape/shape';
 import { MASK_H, MASK_W } from '../core/textures/mask';
 import type { Mask, TextureLayer } from '../core/types';
+import type { SavedHistory } from './history';
 import { DEFAULT_PRINT, newTexture, type PrintSettings } from './print';
 import { coerceProfile, PROFILE_KINDS, type ProfileKind, type ProfileMap } from './profiles';
 
@@ -10,7 +11,10 @@ export const PROJECT_FORMAT = 'clay-slicer-project';
 
 /** Everything that defines a print, independent of any UI state. */
 export interface ProjectData {
+  /** the project's name (file name, G-code name, title bar) */
   name: string;
+  /** name of the model inside it; older files have none and use `name` */
+  modelName?: string;
   raw: Float32Array | null;
   /** set when the model was drawn with the shape tool (raw is then just its mesh) */
   shape: ShapeSpec | null;
@@ -21,12 +25,15 @@ export interface ProjectData {
   masks: Record<string, Mask>;
   /** decal images by texture id, and mask pictures by `<id>~mask` */
   images: Record<string, Mask>;
+  /** the undo history, when the file has one */
+  history?: SavedHistory;
 }
 
 interface ProjectJson {
   format: typeof PROJECT_FORMAT;
   version: 1;
   name: string;
+  modelName?: string;
   shape?: ShapeSpec;
   profiles: Record<ProfileKind, unknown>;
   print: PrintSettings;
@@ -39,6 +46,7 @@ export function writeProject(p: ProjectData): Uint8Array {
     format: PROJECT_FORMAT,
     version: 1,
     name: p.name,
+    ...(p.modelName ? { modelName: p.modelName } : {}),
     ...(p.shape ? { shape: p.shape } : {}),
     profiles: p.profiles,
     print: p.print,
@@ -70,6 +78,10 @@ export function writeProject(p: ProjectData): Uint8Array {
       buf.set(im.data, 4);
       files[`${dir}/${t.id}.bin`] = buf;
     }
+  }
+  if (p.history) {
+    files['history.json'] = strToU8(JSON.stringify(p.history.json));
+    p.history.blobs.forEach((b, i) => (files[`history/${i}.bin`] = b));
   }
   return zipSync(files, { level: 6 });
 }
@@ -117,6 +129,7 @@ export function readProject(bytes: Uint8Array): ProjectData {
     images: readImages(files, textures),
     shape: isObj(json.shape) ? coerceShape(json.shape) : null,
     name: typeof json.name === 'string' ? json.name : 'project',
+    modelName: typeof json.modelName === 'string' ? json.modelName : undefined,
     raw: files['model.stl'] ? parseStl(files['model.stl'].slice().buffer) : null,
     profiles,
     print: {
@@ -125,7 +138,19 @@ export function readProject(bytes: Uint8Array): ProjectData {
     },
     textures,
     masks,
+    history: readHistory(files),
   };
+}
+
+function readHistory(files: Record<string, Uint8Array>): SavedHistory | undefined {
+  if (!files['history.json']) return undefined;
+  try {
+    const blobs: Uint8Array[] = [];
+    for (let i = 0; files[`history/${i}.bin`]; i++) blobs.push(files[`history/${i}.bin`]);
+    return { json: JSON.parse(strFromU8(files['history.json'])), blobs };
+  } catch {
+    return undefined;
+  }
 }
 
 function readImages(

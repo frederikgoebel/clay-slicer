@@ -6,7 +6,7 @@
 import type { CurvePoint } from './textures/curve';
 
 export type TextureType =
-  'fuzzy' | 'wave' | 'zigzag' | 'ribs' | 'twist' | 'blobs' | 'decal' | 'ledge' | 'sling';
+  'fuzzy' | 'wave' | 'zigzag' | 'ribs' | 'twist' | 'blobs' | 'decal' | 'ledge' | 'sling' | 'flow';
 
 /** How a texture layer combines with the layers before it. */
 export type BlendMode = 'add' | 'max' | 'replace';
@@ -25,7 +25,7 @@ export interface TextureLayer {
   id: string;
   type: TextureType;
   enabled: boolean;
-  /** mm of radial offset (twist: total degrees; blobs: seconds of standing still per blob) */
+  /** mm of radial offset (twist: total degrees; blobs: seconds of standing still per blob; flow: % more or less clay) */
   amplitude: number;
   /** repeats around the circumference (wave, zigzag, ribs, blobs) */
   count: number;
@@ -233,6 +233,8 @@ export interface ToolpathResult {
   lift: Float32Array;
   /** layer thickness in mm at each point (varies around the object with 'follow the top') */
   thick: Float32Array;
+  /** extrusion multiplier at each point (1 = normal; the 'flow' texture changes it) */
+  flow: Float32Array;
   /** index of the point the pause after the floor comes before, -1 = no pause */
   pauseAt: number;
   stats: ToolpathStats;

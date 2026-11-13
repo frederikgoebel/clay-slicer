@@ -17,11 +17,18 @@ export interface BeadMesh {
  * quads, so travel moves leave gaps. The path z is the top of the layer, so the bead sits
  * between z - layerHeight and z. Width comes from the per-point estimate (speed-dependent).
  */
-export function buildBeadMesh(res: ToolpathResult, layerHeight: number, uvPerMm = 0.2): BeadMesh {
+export function buildBeadMesh(
+  res: ToolpathResult,
+  layerHeight: number,
+  uvPerMm = 0.2,
+  /** optional colour per path point (3 floats each), for unlit coloured beads */
+  colors?: Float32Array,
+): BeadMesh {
   const n = res.count;
   const pos = new Float32Array(n * RING * 3);
   const nor = new Float32Array(n * RING * 3);
   const uv = new Float32Array(n * RING * 2);
+  const col = colors ? new Float32Array(n * RING * 3) : null;
   const { xyz } = res;
 
   // section outline in (side, up) with outward normals
@@ -85,6 +92,12 @@ export function buildBeadMesh(res: ToolpathResult, layerHeight: number, uvPerMm 
       const u = (i * RING + k) * 2;
       uv[u] = arc * uvPerMm;
       uv[u + 1] = k / RING;
+      if (col && colors) {
+        const o3 = (i * RING + k) * 3;
+        col[o3] = colors[3 * i];
+        col[o3 + 1] = colors[3 * i + 1];
+        col[o3 + 2] = colors[3 * i + 2];
+      }
     }
   }
 
@@ -117,6 +130,7 @@ export function buildBeadMesh(res: ToolpathResult, layerHeight: number, uvPerMm 
   geometry.setAttribute('position', new BufferAttribute(pos, 3));
   geometry.setAttribute('normal', new BufferAttribute(nor, 3));
   geometry.setAttribute('uv', new BufferAttribute(uv, 2));
+  if (col) geometry.setAttribute('color', new BufferAttribute(col, 3));
   geometry.setIndex(new BufferAttribute(idx, 1));
   geometry.computeBoundingSphere();
 

@@ -1,7 +1,17 @@
+import { useState } from 'react';
 import { isBlockingWarning } from '../../core/toolpath/verify';
 import { useActiveProfile } from '../../hooks/useProfiles';
 import { useSliceStore } from '../../store/sliceStore';
 import styles from './layout.module.css';
+
+const KEY = 'clay-slicer-estimates-collapsed';
+const loadCollapsed = (): boolean => {
+  try {
+    return localStorage.getItem(KEY) === '1';
+  } catch {
+    return false;
+  }
+};
 
 const LOW = 0.88;
 const HIGH = 1.12;
@@ -20,6 +30,16 @@ interface Props {
 export function StatsCard({ meshRadius }: Props) {
   const { status, result, usedSettings, error } = useSliceStore();
   const clay = useActiveProfile('clay');
+  const [collapsed, setCollapsed] = useState(loadCollapsed);
+  const toggle = () =>
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem(KEY, c ? '0' : '1');
+      } catch {
+        /* private window: the choice is just not remembered */
+      }
+      return !c;
+    });
 
   if (status === 'error' && error) {
     return (
@@ -70,11 +90,22 @@ export function StatsCard({ meshRadius }: Props) {
   return (
     <div className={styles.card}>
       <h3>
-        Estimates <small>{st.sliceMs.toFixed(0)} ms</small>
+        <button
+          type="button"
+          className={styles.cardToggle}
+          aria-expanded={!collapsed}
+          onClick={toggle}
+          title={collapsed ? 'Show the estimates' : 'Hide the estimates'}
+        >
+          <span className={styles.chev}>{collapsed ? '▸' : '▾'}</span> Estimates
+        </button>
+        <small>{collapsed ? fmtTime(st.timeS) : `${st.sliceMs.toFixed(0)} ms`}</small>
       </h3>
-      <dl>
-        {rows.flatMap(([k, v]) => [<dt key={`${k}-k`}>{k}</dt>, <dd key={`${k}-v`}>{v}</dd>])}
-      </dl>
+      {!collapsed && (
+        <dl>
+          {rows.flatMap(([k, v]) => [<dt key={`${k}-k`}>{k}</dt>, <dd key={`${k}-v`}>{v}</dd>])}
+        </dl>
+      )}
       {result.warnings.length > 0 && (
         <ul className={styles.warnings}>
           {result.warnings.map((w) => (

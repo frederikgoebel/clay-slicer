@@ -85,9 +85,10 @@ export const TEXTURE_NAMES: Record<TextureType, string> = {
   ribs: 'Ribs / fluting',
   twist: 'Twist',
   blobs: 'Clay blobs',
-  ledge: 'Outdents (ledges)',
-  sling: 'Slings (drooping loops)',
-  decal: 'Decal (image)',
+  ledge: 'Outdents',
+  sling: 'Slings',
+  flow: 'Flow',
+  decal: 'Decal',
 };
 
 /** Outdent presets: out layer by layer, then back in slowly or in one go (bridging the gap). */
@@ -169,6 +170,8 @@ export function newTexture(type: TextureType): TextureLayer {
         curveV: [...CLOSE_SLOWLY],
         curveA: [...ALL_AROUND],
       };
+    case 'flow':
+      return { ...base, amplitude: 40, count: 0, wavelength: 0 };
     case 'sling':
       return {
         ...base,

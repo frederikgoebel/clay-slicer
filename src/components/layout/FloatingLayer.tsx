@@ -6,6 +6,7 @@ import {
   useLayoutStore,
   type PanelId,
 } from '../../store/layoutStore';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { startPanelDrag, useDragStore } from './dragStore';
 import { PANEL_CONTENT } from './panelDefs';
 import styles from './dock.module.css';
@@ -75,7 +76,9 @@ function FloatingWindow({ id, z }: { id: PanelId; z: number }) {
         </span>
       </header>
       <div className={styles.body}>
-        <Content />
+        <ErrorBoundary label={PANEL_TITLES[id]}>
+          <Content />
+        </ErrorBoundary>
       </div>
       <div className={styles.corner} onPointerDown={resize} role="presentation" />
     </section>
