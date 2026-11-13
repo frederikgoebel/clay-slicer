@@ -283,3 +283,23 @@ describe('list order', () => {
     expect(stamp(idB)).toBeGreaterThan(b0);
   });
 });
+
+describe('storage persistence', () => {
+  it('asks the browser to keep the storage and records the answer', async () => {
+    const { requestPersistence } = await import('../src/actions/projectManager');
+    const persist = vi.fn(async () => true);
+    vi.stubGlobal('navigator', { storage: { persist, persisted: async () => false } });
+    await requestPersistence();
+    expect(persist).toHaveBeenCalledTimes(1);
+    expect(useProjectStore.getState().persisted).toBe(true);
+    vi.unstubAllGlobals();
+  });
+  it('does nothing when the browser has no such API', async () => {
+    const { requestPersistence } = await import('../src/actions/projectManager');
+    useProjectStore.setState({ persisted: null });
+    vi.stubGlobal('navigator', {});
+    await requestPersistence();
+    expect(useProjectStore.getState().persisted).toBeNull();
+    vi.unstubAllGlobals();
+  });
+});

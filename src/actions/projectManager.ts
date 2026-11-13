@@ -23,6 +23,26 @@ import { activeProfile, useSettingsStore } from '../store/settingsStore';
 import { useUiStore } from '../store/uiStore';
 import { safeName, saveBlob } from './files';
 
+/**
+ * Ask the browser not to clear this site's storage when space runs low (the projects live in
+ * IndexedDB). Chrome decides by itself (installed app, bookmark, use), Firefox asks the person.
+ */
+let persistAsked = false;
+export async function requestPersistence(): Promise<void> {
+  try {
+    const st = typeof navigator !== 'undefined' ? navigator.storage : undefined;
+    if (!st?.persist) return;
+    let ok = st.persisted ? await st.persisted() : false;
+    if (!ok && !persistAsked) {
+      persistAsked = true;
+      ok = await st.persist();
+    }
+    useProjectStore.getState().setPersisted(ok);
+  } catch {
+    /* not supported: the note in the project list stays cautious */
+  }
+}
+
 let backend: ProjectBackend | null = null;
 const lib = (): ProjectBackend => (backend ??= defaultBackend());
 /** Tests swap the storage. */
@@ -175,6 +195,7 @@ async function writeCurrent(): Promise<void> {
     };
     await lib().put(meta, bytes);
     remember(ps.id);
+    void requestPersistence(); // the first saved project is the reason to ask
     // a change made while writing leaves the project dirty again
     if (useProjectStore.getState().id === ps.id && !timer)
       useProjectStore.getState().setStatus('saved', meta.updatedAt);
@@ -346,6 +367,7 @@ export async function downloadStoredProject(id: string): Promise<void> {
 /** At startup: list the library and reopen the project that was open last. */
 export async function restoreLastProject(): Promise<void> {
   await refreshLibrary();
+  if (useProjectStore.getState().library.length) void requestPersistence();
   const id = lastId();
   if (
     id &&

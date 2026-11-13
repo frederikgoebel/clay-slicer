@@ -67,6 +67,7 @@ function ProjectIcon({ icon: stored }: { icon: ProjectMeta['icon'] }) {
 export function ProjectTab() {
   const id = useProjectStore((s) => s.id);
   const library = useProjectStore((s) => s.library);
+  const persisted = useProjectStore((s) => s.persisted === true);
   const uploadId = useId();
 
   const askDelete = async (p: ProjectMeta) => {
@@ -120,7 +121,9 @@ export function ProjectTab() {
         </span>
       </div>
       <p className={styles.projectNote}>
-        Projects are stored in this browser only. Download the ones you want to keep.
+        {persisted
+          ? 'Projects are stored in this browser only, and the browser has promised to keep them. Download the ones you want to keep safe.'
+          : 'Projects are stored in this browser only, and the browser may delete them if storage runs low. Download the ones you want to keep.'}
       </p>
       {library.length === 0 && (
         <p className={styles.hint}>

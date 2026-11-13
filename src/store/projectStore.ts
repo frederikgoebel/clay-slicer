@@ -16,6 +16,9 @@ interface ProjectState {
   savedAt: number | null;
   /** the projects kept in this browser, newest first */
   library: ProjectMeta[];
+  /** the browser promised not to clear this site's storage (null = not asked / not supported) */
+  persisted: boolean | null;
+  setPersisted: (v: boolean | null) => void;
   setName: (name: string, auto?: boolean) => void;
   setStatus: (status: SaveStatus, savedAt?: number) => void;
   setLibrary: (library: ProjectMeta[]) => void;
@@ -30,6 +33,8 @@ export const useProjectStore = create<ProjectState>()((set) => ({
   status: 'empty',
   savedAt: null,
   library: [],
+  persisted: null,
+  setPersisted: (persisted) => set({ persisted }),
   setName: (name, auto = false) => set({ name, autoNamed: auto }),
   setStatus: (status, savedAt) => set((s) => ({ status, savedAt: savedAt ?? s.savedAt })),
   setLibrary: (library) => set({ library }),
