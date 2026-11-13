@@ -22,7 +22,7 @@ export function previewRings(
         floorBelow: false,
         mode: 'spiral',
         topCurves: 'closed',
-        segLen: 3,
+        sampleMm: 3,
         seamAngle: 0,
       });
     } catch {

@@ -5,13 +5,14 @@ import {
   downloadStoredProject,
   duplicateStoredProject,
   newProject,
-  openProjectFile,
   openStoredProject,
   uploadProjects,
 } from '../../actions/projectManager';
 import { validIcon } from '../../domain/projectIcon';
 import type { ProjectMeta } from '../../domain/projectLibrary';
+import { confirmDialog } from '../../store/confirmStore';
 import { useProjectStore } from '../../store/projectStore';
+import { MenuButton } from '../ui/Menu';
 import { Button } from '../ui/controls';
 import styles from './panels.module.css';
 
@@ -62,41 +63,30 @@ function ProjectIcon({ icon: stored }: { icon: ProjectMeta['icon'] }) {
   );
 }
 
-/** The project tab: one list of the projects kept in this browser, with new / open on top. */
+/** The project tab: one list of the projects kept in this browser, with new on top. */
 export function ProjectTab() {
   const id = useProjectStore((s) => s.id);
   const library = useProjectStore((s) => s.library);
-  const fileId = useId();
   const uploadId = useId();
+
+  const askDelete = async (p: ProjectMeta) => {
+    const ok = await confirmDialog({
+      title: 'Delete project?',
+      message: [
+        `“${p.name}” will be removed from this browser.`,
+        'This cannot be undone. Download it first if you want to keep it.',
+      ],
+      confirmLabel: 'Delete project',
+      danger: true,
+    });
+    if (ok) void deleteStoredProject(p.id);
+  };
 
   return (
     <div className={styles.projectTab}>
-      <p className={styles.projectNote}>
-        Projects are stored in this browser only. Download the ones you want to keep.
-      </p>
-      <div className={styles.projectMain}>
-        <Button variant="primary" onClick={() => void newProject()}>
-          New project
-        </Button>
-        <label
-          className={styles.fileBtn}
-          htmlFor={fileId}
-          title="Open a project file. If it brings printer, nozzle or clay profiles you do not have, you are asked whether to import them."
-        >
-          Open file…
-        </label>
-        <input
-          id={fileId}
-          type="file"
-          accept=".zip"
-          hidden
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void openProjectFile(file);
-            e.target.value = '';
-          }}
-        />
-      </div>
+      <Button variant="primary" className={styles.newProject} onClick={() => void newProject()}>
+        New project
+      </Button>
       <div className={styles.projectBar}>
         <h3>Your projects ({library.length})</h3>
         <span className={styles.projectBarActions}>
@@ -111,7 +101,7 @@ export function ProjectTab() {
           <label
             className={styles.fileBtnSmall}
             htmlFor={uploadId}
-            title="Add project files, or a zip from “Download all”, to this list without opening them"
+            title="Add project files, or a zip from “Download all”, to this list. Click a project in the list to open it."
           >
             Upload…
           </label>
@@ -129,52 +119,62 @@ export function ProjectTab() {
           />
         </span>
       </div>
+      <p className={styles.projectNote}>
+        Projects are stored in this browser only. Download the ones you want to keep.
+      </p>
       {library.length === 0 && (
         <p className={styles.hint}>
           Nothing yet. A project appears here as soon as it has a model.
         </p>
       )}
       <ul className={styles.projectList}>
-        {library.map((p) => (
-          <li key={p.id} className={p.id === id ? styles.projectCurrent : undefined}>
-            <div className={styles.projectHead}>
+        {library.map((p) => {
+          const current = p.id === id;
+          return (
+            <li
+              key={p.id}
+              className={`${styles.projectCard} ${current ? styles.projectCurrent : ''}`}
+              role="button"
+              tabIndex={0}
+              aria-current={current ? 'true' : undefined}
+              title={current ? 'This project is open' : `Open “${p.name}”`}
+              onClick={() => !current && void openStoredProject(p.id)}
+              onKeyDown={(e) => {
+                if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  if (!current) void openStoredProject(p.id);
+                }
+              }}
+            >
               <ProjectIcon icon={p.icon} />
-              <div>
+              <div className={styles.projectText}>
                 <div className={styles.projectName}>
                   {p.name}
-                  {p.id === id && <em> (open)</em>}
+                  {current && <em> (open)</em>}
                 </div>
                 <div className={styles.projectMeta}>
                   {when(p.updatedAt)} · {kb(p.size)}
                 </div>
               </div>
-            </div>
-            <div className={styles.profileActions}>
-              <Button small disabled={p.id === id} onClick={() => void openStoredProject(p.id)}>
-                Open
-              </Button>
-              <Button
-                small
-                title="Make a copy of this project under a new name"
-                onClick={() => void duplicateStoredProject(p.id)}
-              >
-                Duplicate
-              </Button>
-              <Button small onClick={() => void downloadStoredProject(p.id)}>
-                Download
-              </Button>
-              <Button
-                small
-                onClick={() => {
-                  if (window.confirm(`Delete "${p.name}" from this browser?`))
-                    void deleteStoredProject(p.id);
-                }}
-              >
-                Delete
-              </Button>
-            </div>
-          </li>
-        ))}
+              <MenuButton
+                label={`More actions for ${p.name}`}
+                items={[
+                  {
+                    label: 'Duplicate',
+                    title: 'Make a copy of this project under a new name',
+                    onSelect: () => void duplicateStoredProject(p.id),
+                  },
+                  {
+                    label: 'Download',
+                    title: 'Save this project as a file',
+                    onSelect: () => void downloadStoredProject(p.id),
+                  },
+                  { label: 'Delete', danger: true, onSelect: () => void askDelete(p) },
+                ]}
+              />
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

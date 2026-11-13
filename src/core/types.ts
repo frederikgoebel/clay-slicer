@@ -145,7 +145,8 @@ export interface SliceSettings {
   overhangMax: number; // deg from vertical
   // print
   mode: PrintMode;
-  segLen: number;
+  /** internal: fixed sampling distance in mm for small previews; normally derived from the textures */
+  sampleMm?: number;
   seamAngle: number;
   topFinish: boolean;
   /** objects whose top is not flat: closed curves (as sliced) or open lines on the outside */
@@ -177,6 +178,8 @@ export interface SliceSettings {
   /** direction of the first line layer for the line / grid patterns, degrees */
   floorAngle: number;
   textureFadeIn: number;
+  /** distance between the points of the path, mm */
+  segLen: number;
   textures: TextureLayer[];
 }
 

@@ -23,7 +23,6 @@ export function testSettings(o: Partial<SliceSettings> = {}): SliceSettings {
     nozzle: 3,
     overhangMax: 25,
     floorSpacingPct: 90,
-    segLen: 2,
     ...o,
   };
 }

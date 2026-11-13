@@ -60,6 +60,7 @@ function PaintTools({ id }: { id: string }) {
         max={60}
         step={1}
         unit="mm"
+        hint="Diameter of the brush on the model, in mm."
         onChange={(radius) => patchPaint({ radius })}
       />
       <Slider
@@ -167,6 +168,7 @@ function PatternTools({ tex }: { tex: TextureLayer }) {
             max={20}
             step={1}
             unit="×"
+            hint="How many times the picture repeats around the object."
             onChange={(tilesU) => set({ tilesU })}
           />
           <Slider
@@ -217,6 +219,7 @@ function PatternTools({ tex }: { tex: TextureLayer }) {
             max={100}
             step={1}
             unit="%"
+            hint="How gradually the pattern fades from inside to outside, instead of a hard edge."
             onChange={(softness) => set({ softness })}
           />
         </>
@@ -302,6 +305,7 @@ function PatternTools({ tex }: { tex: TextureLayer }) {
             max={100}
             step={1}
             unit="%"
+            hint="How gradually the pattern fades from inside to outside, instead of a hard edge."
             onChange={(softness) => set({ softness })}
           />
           {p.kind !== 'gradient' && (
@@ -311,6 +315,7 @@ function PatternTools({ tex }: { tex: TextureLayer }) {
               min={0}
               max={999}
               step={1}
+              hint="Another random arrangement of the same pattern."
               onChange={(seed) => set({ seed })}
             />
           )}

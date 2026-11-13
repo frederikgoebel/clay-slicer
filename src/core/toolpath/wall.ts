@@ -27,7 +27,7 @@ export function addWall(path: PathBuilder, set: RingSet, s: SliceSettings): void
   const H = L * h;
   const zStart = F * h;
   const textures = s.textures;
-  let idx = 0;
+  let arc = 0;
   const liftMm = blobLift(textures);
   const curved = needsCurvature(textures);
 
@@ -76,8 +76,7 @@ export function addWall(path: PathBuilder, set: RingSet, s: SliceSettings): void
       z: zr,
       H,
       t,
-      idx,
-      spacing: A.perimeter / N,
+      arc,
       zStart,
       fadeIn: s.textureFadeIn,
       lh: h,
@@ -112,7 +111,7 @@ export function addWall(path: PathBuilder, set: RingSet, s: SliceSettings): void
     const flow = textures.length ? flowFactor(textures, ctx) : 1;
     if (travel) {
       pushTravel(path, s, x, y, z, route);
-      idx++;
+      arc += A.perimeter / N;
       return;
     }
     path.push(
@@ -127,7 +126,7 @@ export function addWall(path: PathBuilder, set: RingSet, s: SliceSettings): void
       undefined,
       flow,
     );
-    idx++;
+    arc += A.perimeter / N;
   };
 
   let prev: Float64Array | null = null;

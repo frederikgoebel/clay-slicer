@@ -483,6 +483,7 @@ export function ShapeHandles() {
   const panelVisible = useModelPanelVisible();
   const selected = useUiStore((s) => s.shapeSection);
   const show = useUiStore((s) => s.showHandles);
+  const inPreview = useUiStore((s) => s.handlesInPreview);
   const view = useEffectiveView();
   const scalePct = useSettingsStore((s) => s.print.scalePct);
   const shrinkagePct = useActiveProfile('clay').shrinkagePct;
@@ -517,7 +518,8 @@ export function ShapeHandles() {
     });
   }, [shape, k, angleAt]);
 
-  if (!shape || !designing || !show || !panelVisible || view !== 'model') return null;
+  if (!shape || !designing || !show || !panelVisible || (view !== 'model' && !inPreview))
+    return null;
 
   const sel = Math.min(selected, shape.sections.length - 1);
   const secs = shape.sections;

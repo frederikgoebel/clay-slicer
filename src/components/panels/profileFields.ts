@@ -9,7 +9,7 @@ export interface FieldDef<T> {
   max: number;
   step: number;
   unit?: string;
-  hint?: string;
+  hint: string;
   /** `gcode`: changes the generated G-code. `analysis`: only estimates, warnings and the preview. */
   usage: 'gcode' | 'analysis';
 }
@@ -23,6 +23,7 @@ export const PRINTER_FIELDS: FieldDef<PrinterProfile>[] = [
     max: 1000,
     step: 1,
     unit: 'mm',
+    hint: 'Diameter of the print bed. The path is checked against it.',
   },
   {
     key: 'buildHeight',
@@ -32,6 +33,7 @@ export const PRINTER_FIELDS: FieldDef<PrinterProfile>[] = [
     max: 2000,
     step: 1,
     unit: 'mm',
+    hint: 'Tallest object the printer can make. The path is checked against it.',
   },
   {
     key: 'tankCm3',
@@ -41,6 +43,7 @@ export const PRINTER_FIELDS: FieldDef<PrinterProfile>[] = [
     max: 60000,
     step: 100,
     unit: 'cm³',
+    hint: 'Clay the tank holds, in cm³. Used to estimate how often you have to refill it.',
   },
   {
     key: 'travelSpeed',
@@ -50,6 +53,7 @@ export const PRINTER_FIELDS: FieldDef<PrinterProfile>[] = [
     max: 300,
     step: 5,
     unit: 'mm/s',
+    hint: 'How fast the nozzle moves between lines when it does not extrude.',
   },
   {
     key: 'flowFollowsSpeedPct',
@@ -62,6 +66,16 @@ export const PRINTER_FIELDS: FieldDef<PrinterProfile>[] = [
     hint: '0 = E-driven (same bead at any speed), 100 = pressure-fed (slower move = fatter bead). Used for the bead width estimate.',
   },
   {
+    key: 'zHop',
+    usage: 'gcode',
+    label: 'Z hop',
+    min: 0,
+    max: 30,
+    step: 1,
+    unit: 'mm',
+    hint: 'The nozzle rises this much while it travels between lines or curves, so it clears the soft beads already printed. 0 = off. Only Standard layers has travel moves.',
+  },
+  {
     key: 'eDia',
     usage: 'gcode',
     label: 'E-axis Ø',
@@ -71,7 +85,16 @@ export const PRINTER_FIELDS: FieldDef<PrinterProfile>[] = [
     unit: 'mm',
     hint: 'Converts clay volume to E units. Calibrate on your machine.',
   },
-  { key: 'primeE', usage: 'gcode', label: 'Prime', min: 0, max: 50, step: 0.5, unit: 'E' },
+  {
+    key: 'primeE',
+    usage: 'gcode',
+    label: 'Prime',
+    min: 0,
+    max: 50,
+    step: 0.5,
+    unit: 'E',
+    hint: 'Extra clay pushed out at the start so the flow is steady before the first line, in E units.',
+  },
   {
     key: 'startDwell',
     usage: 'gcode',
@@ -80,6 +103,7 @@ export const PRINTER_FIELDS: FieldDef<PrinterProfile>[] = [
     max: 5000,
     step: 50,
     unit: 'ms',
+    hint: 'Wait before the first line, in ms, for the clay to start flowing.',
   },
 ];
 
@@ -92,6 +116,7 @@ export const NOZZLE_FIELDS: FieldDef<NozzleProfile>[] = [
     max: 10,
     step: 0.1,
     unit: 'mm',
+    hint: 'Opening of the nozzle, in mm. Used to check the bead width makes sense.',
   },
   {
     key: 'extrusionRate',
@@ -111,6 +136,7 @@ export const NOZZLE_FIELDS: FieldDef<NozzleProfile>[] = [
     max: 6,
     step: 0.05,
     unit: 'mm',
+    hint: 'Height of every layer, in mm. The bead width follows from this and the extrusion rate.',
   },
 ];
 
@@ -123,6 +149,7 @@ export const CLAY_FIELDS: FieldDef<ClayProfile>[] = [
     max: 150,
     step: 1,
     unit: 'mm/s',
+    hint: 'How fast the nozzle moves while it extrudes, in mm/s.',
   },
   {
     key: 'flow',
@@ -143,6 +170,26 @@ export const CLAY_FIELDS: FieldDef<ClayProfile>[] = [
     step: 1,
     unit: 's',
     hint: 'Slows small layers so the clay below can firm up. 0 = off.',
+  },
+  {
+    key: 'retractDistance',
+    usage: 'gcode',
+    label: 'Retraction',
+    min: 0,
+    max: 10,
+    step: 0.5,
+    unit: 'mm',
+    hint: 'Clay pulled back (E axis) before a travel move and pushed forward again after it, so soft clay does not ooze while the nozzle moves. It depends on how soft and compressible the clay is. 0 = off. Only Standard layers has travel moves.',
+  },
+  {
+    key: 'retractSpeed',
+    usage: 'gcode',
+    label: 'Retraction speed',
+    min: 2,
+    max: 60,
+    step: 1,
+    unit: 'mm/s',
+    hint: 'How fast the clay is pulled back and pushed forward again.',
   },
   {
     key: 'shrinkagePct',
@@ -172,6 +219,7 @@ export const CLAY_FIELDS: FieldDef<ClayProfile>[] = [
     max: 2.4,
     step: 0.05,
     unit: 'g/cm³',
+    hint: 'Weight of the wet clay per cm³. Used for the weight estimates.',
   },
   {
     key: 'waterPct',

@@ -223,7 +223,7 @@ export function addVariableWall(path: PathBuilder, set: RingSet, s: SliceSetting
     return K[j][b] * (1 - (u - j)) + K[j + 1][b] * (u - j);
   };
   const prev = new Float64Array(2 * M).fill(NaN);
-  let idx = 0;
+  let arc = 0;
   const point = (b: number, f: number, t: number, feature: number, useOverhang: boolean) => {
     const bb = ((b % M) + M) % M;
     const top = T[bb];
@@ -237,8 +237,7 @@ export function addVariableWall(path: PathBuilder, set: RingSet, s: SliceSetting
       z: zr,
       H,
       t,
-      idx,
-      spacing: (TAU * r) / M,
+      arc,
       zStart: F * h,
       fadeIn: s.textureFadeIn,
       lh: th,
@@ -280,7 +279,7 @@ export function addVariableWall(path: PathBuilder, set: RingSet, s: SliceSetting
       th,
       textures.length ? flowFactor(textures, ctx) : 1,
     );
-    idx++;
+    arc += (TAU * r) / M;
   };
 
   // the path starts where the seam is (angle of the first ring's first point)

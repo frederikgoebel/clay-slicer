@@ -56,3 +56,7 @@
   color: var(--dim);
   font-size: 11px;
 }
+.presets button:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel-2));
+}

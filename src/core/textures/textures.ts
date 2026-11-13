@@ -1,5 +1,5 @@
 import type { TextureLayer } from '../types';
-import { curveAt } from './curve';
+import { curveAt, type CurvePoint } from './curve';
 import { sampleImage, sampleMask } from './mask';
 import { patternMask } from './noise';
 
@@ -9,10 +9,8 @@ export interface TexCtx {
   H: number;
   /** position around the loop, 0..1 (wraps) */
   t: number;
-  /** running index of the point along the wall path */
-  idx: number;
-  /** distance between points along the path, mm */
-  spacing: number;
+  /** distance travelled along the wall path so far, mm (texture noise is measured in mm along it, so the point spacing does not matter) */
+  arc: number;
   /** z above which textures may start (top of floor) */
   zStart: number;
   fadeIn: number;
@@ -48,6 +46,10 @@ function valueNoise(seed: number, x: number): number {
   const t = smooth(x - xi);
   return hash(seed, xi) * (1 - t) + hash(seed, xi + 1) * t;
 }
+
+/** Size of one noise cell of a fuzzy texture, mm (no wavelength: about the old point spacing). */
+export const fuzzySize = (l: TextureLayer): number =>
+  Math.max(0.5, l.wavelength > 0 ? l.wavelength : 1.5);
 
 function tri(phase: number): number {
   return 2 * Math.abs(2 * (phase - Math.floor(phase + 0.5))) - 1;
@@ -103,19 +105,62 @@ function blendInto(off: number, value: number, m: number, blend: TextureLayer['b
   return off + value * m;
 }
 
-/** Outdent 0..1: the height curve across the texture's range times the curve around the object. */
-function ledgeValue(l: TextureLayer, c: TexCtx): number {
+/** Centre of mass (0..1) of a curve's area, so an asymmetric profile is judged at its middle. */
+const centroidCache = new WeakMap<object, number>();
+function curveCentroid(points: CurvePoint[] | undefined): number {
+  if (!points || points.length < 2) return 0.5;
+  const hit = centroidCache.get(points);
+  if (hit !== undefined) return hit;
+  let sum = 0;
+  let mom = 0;
+  for (let i = 0; i < 64; i++) {
+    const x = (i + 0.5) / 64;
+    const y = Math.max(0, curveAt(points, x));
+    sum += y;
+    mom += y * x;
+  }
+  const c = sum > 1e-9 ? mom / sum : 0.5;
+  centroidCache.set(points, c);
+  return c;
+}
+
+/**
+ * Outdent 0..1: the height curve across the texture's range times the curve around the object.
+ * Also returns the middle of the outdent this point belongs to (one cell of the grid of repeats):
+ * its height and its offset around the object, so the fades and the mask can be judged once for
+ * the whole outdent instead of point by point.
+ */
+function ledgeCell(l: TextureLayer, c: TexCtx): { value: number; zc: number; du: number } | null {
   const zf = (l.from / 100) * c.H;
   const zt = (l.to / 100) * c.H;
-  if (zt <= zf) return 0;
+  if (zt <= zf) return null;
   const n = Math.max(1, Math.round((zt - zf) / Math.max(l.wavelength, 0.1)));
   const s = Math.min(n - 1e-9, Math.max(0, ((c.z - zf) / (zt - zf)) * n));
   const k = Math.floor(s);
   const along = curveAt(l.curveV, s - k);
   // each repeat in height is turned a little further around the object
   const u = c.u + (k * (l.rotStep ?? 0)) / 360;
-  const f = (u * Math.max(1, l.count)) % 1;
-  return along * curveAt(l.curveA, f < 0 ? f + 1 : f);
+  const cnt = Math.max(1, l.count);
+  const f = (u * cnt) % 1;
+  const fr = f < 0 ? f + 1 : f;
+  return {
+    value: along * curveAt(l.curveA, fr),
+    zc: zf + ((k + curveCentroid(l.curveV)) / n) * (zt - zf),
+    du: (curveCentroid(l.curveA) - fr) / cnt,
+  };
+}
+
+/** The point's context moved to the middle of its outdent. */
+function atOutdentCentre(c: TexCtx, zc: number, du: number): TexCtx {
+  const u = c.u + du;
+  return {
+    ...c,
+    z: zc,
+    u: u - Math.floor(u),
+    v: c.z > 1e-9 ? (c.v * zc) / c.z : c.v,
+    ang: c.ang + du * TAU,
+    t: c.t + du,
+  };
 }
 
 /**
@@ -145,12 +190,26 @@ export function radialOffset(layers: TextureLayer[], c: TexCtx): number {
   let off = 0;
   for (const l of layers) {
     if (!l.enabled || l.type === 'twist' || l.type === 'blobs' || l.type === 'flow') continue;
+    if (l.type === 'ledge') {
+      // an outdent is one piece: the height range, the fade-in and the mask are taken at its
+      // middle, so the whole outdent gets the same strength instead of being cut up by them
+      const cell = ledgeCell(l, c);
+      if (!cell || cell.value === 0) continue;
+      const cc = atOutdentCentre(c, cell.zc, cell.du);
+      let m = heightMask(l, cc.z, cc.H);
+      if (m === 0) continue;
+      m *= maskValue(l, cc);
+      if (m === 0) continue;
+      const g = c.fadeIn > 0 ? smooth((cc.z - c.zStart) / c.fadeIn) : cc.z >= c.zStart ? 1 : 0;
+      off = blendInto(off, l.amplitude * cell.value, m * (g / gate), l.blend);
+      continue;
+    }
     let m = heightMask(l, c.z, c.H);
     if (m === 0) continue;
     m *= maskValue(l, c);
     if (m === 0) continue;
-    if (l.type === 'ledge' || l.type === 'sling') {
-      const value = l.amplitude * (l.type === 'ledge' ? ledgeValue(l, c) : slingValue(l, c));
+    if (l.type === 'sling') {
+      const value = l.amplitude * slingValue(l, c);
       if (value === 0) continue;
       off = blendInto(off, value, m, l.blend);
       continue;
@@ -159,11 +218,7 @@ export function radialOffset(layers: TextureLayer[], c: TexCtx): number {
     let v = 0;
     switch (l.type) {
       case 'fuzzy': {
-        const size = Math.max(l.wavelength, c.spacing);
-        v =
-          size <= c.spacing * 1.01
-            ? hash(l.seed, c.idx)
-            : valueNoise(l.seed, (c.idx * c.spacing) / size);
+        v = valueNoise(l.seed, c.arc / fuzzySize(l));
         break;
       }
       case 'wave':

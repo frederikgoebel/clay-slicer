@@ -144,6 +144,46 @@ describe('projects in the browser', () => {
   });
 });
 
+describe('deleting projects', () => {
+  it('deleting another project and opening a third one does not bring it back', async () => {
+    useModelStore.getState().setModel(cylinder(10, 20), 'a');
+    useProjectStore.getState().setName('A');
+    const a = useProjectStore.getState().id;
+    await newProject();
+    useModelStore.getState().setModel(cylinder(12, 20), 'b');
+    useProjectStore.getState().setName('B');
+    const b = useProjectStore.getState().id;
+    await newProject();
+    useModelStore.getState().setModel(cylinder(14, 20), 'c');
+    useProjectStore.getState().setName('C');
+    await saveNow();
+    await deleteStoredProject(b);
+    await openStoredProject(a);
+    expect(
+      lib()
+        .map((m) => m.name)
+        .sort(),
+    ).toEqual(['A', 'C']);
+  });
+
+  it('deleting the open project returns to the empty start screen and stays deleted', async () => {
+    useModelStore.getState().setModel(cylinder(10, 20), 'a');
+    useProjectStore.getState().setName('A');
+    const a = useProjectStore.getState().id;
+    await newProject();
+    useModelStore.getState().setModel(cylinder(12, 20), 'b');
+    useProjectStore.getState().setName('B');
+    await saveNow();
+    const b = useProjectStore.getState().id;
+    await deleteStoredProject(b);
+    expect(useModelStore.getState().raw).toBeNull();
+    expect(useProjectStore.getState().id).not.toBe(b);
+    await openStoredProject(a);
+    await saveNow();
+    expect(lib().map((m) => m.name)).toEqual(['A']);
+  });
+});
+
 describe('download all', () => {
   it('bundles project, G-code and STL', () => {
     const files = unzipSync(

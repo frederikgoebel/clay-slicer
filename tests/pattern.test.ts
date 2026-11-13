@@ -96,8 +96,7 @@ describe('a pattern limits where a texture applies', () => {
   });
   const c = (ang: number, z: number): TexCtx => ({
     t: 0.25,
-    idx: 5,
-    spacing: 1.5,
+    arc: 7.5,
     zStart: 0,
     fadeIn: 0,
     lh: 2,

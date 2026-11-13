@@ -15,24 +15,18 @@ export interface PrintSettings {
   rotY: number;
   rotZ: number;
   mode: PrintMode;
-  segLen: number;
   seamAngle: number;
   topFinish: boolean;
   topCurves: TopCurves;
   /** degrees from vertical below which a face counts as top surface */
   topAngle: number;
-  /** mm of E pulled back before travel moves (0 = off) */
   /** Standard layers: wall loops, infill share in % (0 = none), pattern, angle, solid layers at the top */
   wallCount: number;
   infillDensity: number;
   infillPattern: InfillPattern;
   infillAngle: number;
   solidTop: number;
-  retractDistance: number;
-  /** mm/s */
-  retractSpeed: number;
   /** mm the nozzle rises on travel moves */
-  zHop: number;
   floorLayers: number;
   floorSpacingPct: number;
   floorPattern: FloorPattern;
@@ -44,6 +38,8 @@ export interface PrintSettings {
   /** mm the nozzle lifts during the pause */
   pauseLift: number;
   textureFadeIn: number;
+  /** distance between the points of the printed path, mm */
+  segLen: number;
 }
 
 export const DEFAULT_PRINT: PrintSettings = {
@@ -52,7 +48,6 @@ export const DEFAULT_PRINT: PrintSettings = {
   rotY: 0,
   rotZ: 0,
   mode: 'spiral',
-  segLen: 1.5,
   seamAngle: 0,
   topFinish: true,
   topCurves: 'closed',
@@ -62,9 +57,6 @@ export const DEFAULT_PRINT: PrintSettings = {
   infillPattern: 'lines',
   infillAngle: 45,
   solidTop: 2,
-  retractDistance: 3,
-  retractSpeed: 20,
-  zHop: 5,
   floorLayers: 2,
   floorSpacingPct: 140,
   floorPattern: 'spiral',
@@ -74,7 +66,18 @@ export const DEFAULT_PRINT: PrintSettings = {
   pauseSeconds: 20,
   pauseLift: 300,
   textureFadeIn: 6,
+  segLen: 1,
 };
+
+/** Print settings from storage or a file: known keys only, missing ones at their defaults. */
+export function cleanPrint(raw: unknown): PrintSettings {
+  const src = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
+  const out: Record<string, unknown> = { ...DEFAULT_PRINT };
+  for (const [k, def] of Object.entries(DEFAULT_PRINT)) {
+    if (typeof src[k] === typeof def) out[k] = src[k];
+  }
+  return out as unknown as PrintSettings;
+}
 
 export const uid = (): string => Math.random().toString(36).slice(2, 10);
 

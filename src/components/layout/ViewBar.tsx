@@ -21,19 +21,29 @@ const COLORS: readonly (readonly [ColorMode, string])[] = [
 ];
 
 export function ViewBar() {
-  const view = useUiStore((s) => s.view);
+  const storedView = useUiStore((s) => s.view);
+  const painting = useUiStore((s) => s.paint.textureId !== null);
   const colorMode = useUiStore((s) => s.colorMode);
   const showBeads = useUiStore((s) => s.showBeads);
   const setShowBeads = useUiStore((s) => s.setShowBeads);
   const setView = useUiStore((s) => s.setView);
   const setColorMode = useUiStore((s) => s.setColorMode);
   const result = useSliceStore((s) => s.result);
+  // while a mask is painted the viewport shows the print preview and the other views are locked
+  const locked = painting && result !== null;
+  const view = locked ? 'preview' : storedView;
   const modes = useMemo(() => (result ? colorModesFor(result) : []), [result]);
   const mode = modes.includes(colorMode) ? colorMode : 'height';
   const [t0, t1] = result ? thicknessRange(result) : [0, 0];
   return (
     <div className={styles.viewbar}>
-      <Segmented label="View" value={view} options={VIEWS} onChange={setView} />
+      <Segmented
+        label="View"
+        value={view}
+        options={VIEWS}
+        onChange={setView}
+        disabled={(v) => locked && v !== 'preview'}
+      />
       {view === 'layers' && result && (
         <label className={styles.inline}>
           Colour
@@ -58,6 +68,14 @@ export function ViewBar() {
           />
           Bead size
         </label>
+      )}
+      {view === 'layers' && result && result.dwell.some((d) => d > 0) && (
+        <span
+          className={styles.inline}
+          title="The nozzle stands still here, extruding a clay blob (see the texture's dwell time)"
+        >
+          <span className={styles.pauseDot} /> Pauses
+        </span>
       )}
       {view === 'layers' && result && mode === 'thickness' && (
         <span className={styles.inline} title="blue = thinnest, yellow = thickest">

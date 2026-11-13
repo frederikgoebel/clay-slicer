@@ -34,11 +34,11 @@ export function PrintPanel() {
         <Slider
           label={F.segLen.label}
           value={print.segLen}
-          min={0.5}
-          max={6}
+          min={0.2}
+          max={5}
           step={0.1}
           unit="mm"
-          hint="Distance between G-code points. Smaller = smoother and a bigger file."
+          hint="Distance between the points of the printed path. Smaller = smoother curves, sharper texture detail and corners, but a larger G-code file. Textures and curvature masks are sampled at these points."
           onChange={(segLen) => setPrint({ segLen })}
         />
         <Toggle
@@ -101,6 +101,7 @@ export function PrintPanel() {
                 max={179}
                 step={1}
                 unit={F.infillAngle.unit}
+                hint="Direction of the infill lines, in degrees. Lines and grid turn by 90° every layer from this start."
                 onChange={(infillAngle) => setPrint({ infillAngle })}
               />
               <Slider
@@ -116,39 +117,6 @@ export function PrintPanel() {
           )}
         </Section>
       )}
-      <Section title="Travel moves">
-        <Slider
-          label={F.retractDistance.label}
-          value={print.retractDistance}
-          min={0}
-          max={10}
-          step={0.5}
-          unit={F.retractDistance.unit}
-          hint="Clay pulled back (E axis) before a travel move and pushed forward again after it. 0 = off."
-          onChange={(retractDistance) => setPrint({ retractDistance })}
-        />
-        {print.retractDistance > 0 && (
-          <Slider
-            label={F.retractSpeed.label}
-            value={print.retractSpeed}
-            min={2}
-            max={60}
-            step={1}
-            unit={F.retractSpeed.unit}
-            onChange={(retractSpeed) => setPrint({ retractSpeed })}
-          />
-        )}
-        <Slider
-          label={F.zHop.label}
-          value={print.zHop}
-          min={0}
-          max={30}
-          step={1}
-          unit={F.zHop.unit}
-          hint="The nozzle rises this much while it travels between lines or curves."
-          onChange={(zHop) => setPrint({ zHop })}
-        />
-      </Section>
       <Section title="Floor">
         <Slider
           label={F.floorLayers.label}
@@ -175,6 +143,7 @@ export function PrintPanel() {
             max={90}
             step={5}
             unit="°"
+            hint="Direction of the floor lines, in degrees."
             onChange={(floorAngle) => setPrint({ floorAngle })}
           />
         )}
@@ -185,6 +154,7 @@ export function PrintPanel() {
           max={200}
           step={1}
           unit={F.floorSpacingPct.unit}
+          hint="Distance between neighbouring floor lines as a share of the line width. Under 100 % the lines overlap and the floor is tight; above it leaves gaps."
           onChange={(floorSpacingPct) => setPrint({ floorSpacingPct })}
         />
         {print.floorLayers > 0 && (
@@ -210,6 +180,7 @@ export function PrintPanel() {
               max={300}
               step={1}
               unit="s"
+              hint="How long the printer waits after the floor, so you can add something or let the floor firm up."
               onChange={(pauseSeconds) => setPrint({ pauseSeconds })}
             />
             <Slider

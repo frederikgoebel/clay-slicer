@@ -61,3 +61,15 @@ input[type='text'] {
 input[type='range'] {
   accent-color: var(--accent);
 }
+
+/* Fallback so every clickable control reacts to the pointer; component rules refine it. */
+button:not(:disabled):hover,
+label[for]:hover,
+summary:hover,
+[role='button']:not([aria-disabled='true']):hover {
+  cursor: pointer;
+}
+button:not(:disabled):not([data-nohover]):hover,
+label[for]:not([data-nohover]):hover {
+  filter: brightness(1.12);
+}

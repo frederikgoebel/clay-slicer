@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { beadArea, mm3SToCm3Min } from '../core/toolpath/bead';
 import { persist } from 'zustand/middleware';
 import type { TextureLayer, TextureType } from '../core/types';
-import { DEFAULT_PRINT, newTexture, uid, type PrintSettings } from '../domain/print';
+import { cleanPrint, DEFAULT_PRINT, newTexture, uid, type PrintSettings } from '../domain/print';
 import {
   BUILTIN_PROFILES,
   DEFAULT_SELECTION,
@@ -203,7 +203,7 @@ export const useSettingsStore = create<SettingsState>()(
             (profiles[kind] as ProfileMap[typeof kind][]) = done.list;
             selected[kind] = done.id;
           }
-          return { profiles, selected, print: { ...DEFAULT_PRINT, ...print }, textures };
+          return { profiles, selected, print: cleanPrint(print), textures };
         }),
     }),
     {
@@ -241,8 +241,14 @@ export const useSettingsStore = create<SettingsState>()(
             ...((p.profiles?.[kind] ?? []) as ProfileMap[typeof kind][]),
           );
         }
-        // clay profiles saved before colours existed
+        // printer profiles saved before Z hop was part of them
+        profiles.printer = profiles.printer.map((p) => ({
+          ...BUILTIN_PROFILES.printer[0],
+          ...p,
+        }));
+        // clay profiles saved before colours / retraction were part of them
         profiles.clay = profiles.clay.map((c) => ({
+          ...BUILTIN_PROFILES.clay[0],
           ...c,
           color: isHexColor(c.color) ? c.color : BUILTIN_PROFILES.clay[0].color,
         }));
@@ -256,7 +262,7 @@ export const useSettingsStore = create<SettingsState>()(
           ...current,
           profiles,
           selected,
-          print: { ...DEFAULT_PRINT, ...p.print },
+          print: cleanPrint(p.print),
           textures: (p.textures ?? []).map((t) => ({ ...newTexture(t.type), ...t })),
         };
       },

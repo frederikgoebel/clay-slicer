@@ -131,7 +131,7 @@ describe('toolpath', () => {
   });
 
   it('warns when the model does not fit the printer', () => {
-    const r = runPipeline(cylinder(150, 60), testSettings({ segLen: 4 }));
+    const r = runPipeline(cylinder(150, 60), testSettings({}));
     expect(r.warnings.some((w) => w.startsWith('Path leaves'))).toBe(true);
   });
 });

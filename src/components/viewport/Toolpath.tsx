@@ -1,6 +1,14 @@
 import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
-import { MeshBasicMaterial, DoubleSide } from 'three';
+import {
+  BufferGeometry,
+  CanvasTexture,
+  DoubleSide,
+  Float32BufferAttribute,
+  MeshBasicMaterial,
+  PointsMaterial,
+  Points,
+} from 'three';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
@@ -11,6 +19,20 @@ import { buildBeadMesh } from './beadGeometry';
 import { visiblePointCount } from './pathUtils';
 import { useEffectiveView } from './useEffectiveView';
 import { colorModesFor, pointColors } from './toolpathColors';
+
+/** Round sprite for the pause dots (points are square by default). */
+function dotTexture(): CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 32;
+  const g = c.getContext('2d');
+  if (g) {
+    g.fillStyle = '#fff';
+    g.beginPath();
+    g.arc(16, 16, 15, 0, 2 * Math.PI);
+    g.fill();
+  }
+  return new CanvasTexture(c);
+}
 
 /** Crisp, unlit screen-space lines (px). */
 const LINE_PX = 1.5;
@@ -88,6 +110,43 @@ export function Toolpath() {
     invalidate();
   }, [beads, result, layer, layerHeight, invalidate]);
 
+  // pauses (clay blobs): a bright dot at every point where the nozzle stands still extruding
+  const pauses = useMemo(() => {
+    if (!result) return null;
+    const idx: number[] = [];
+    for (let i = 0; i < result.count; i++) if (result.dwell[i] > 0) idx.push(i);
+    if (!idx.length) return null;
+    const pos = new Float32Array(idx.length * 3);
+    idx.forEach((i, n) => pos.set(result.xyz.subarray(3 * i, 3 * i + 3), 3 * n));
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new Float32BufferAttribute(pos, 3));
+    const material = new PointsMaterial({
+      color: '#4fd8ff',
+      size: 7,
+      sizeAttenuation: false,
+      map: dotTexture(),
+      alphaTest: 0.4,
+      transparent: true,
+    });
+    const object = new Points(geometry, material);
+    object.frustumCulled = false;
+    return { object, geometry, material, idx };
+  }, [result]);
+  useEffect(
+    () => () => {
+      pauses?.geometry.dispose();
+      pauses?.material.map?.dispose();
+      pauses?.material.dispose();
+    },
+    [pauses],
+  );
+  useEffect(() => {
+    if (!pauses || !result) return;
+    const visible = visiblePointCount(result, layer, layerHeight);
+    pauses.geometry.setDrawRange(0, pauses.idx.filter((i) => i < visible).length);
+    invalidate();
+  }, [pauses, result, layer, layerHeight, invalidate]);
+
   useEffect(
     () => () => {
       lines?.object.geometry.dispose();
@@ -110,7 +169,14 @@ export function Toolpath() {
   }, [lines, result, layer, layerHeight, invalidate]);
 
   if (view !== 'layers' || !lines) return null;
-  if (beads)
-    return <mesh geometry={beads.geometry} material={beadMaterial} frustumCulled={false} />;
-  return <primitive object={lines.object} />;
+  return (
+    <>
+      {beads ? (
+        <mesh geometry={beads.geometry} material={beadMaterial} frustumCulled={false} />
+      ) : (
+        <primitive object={lines.object} />
+      )}
+      {pauses && <primitive object={pauses.object} />}
+    </>
+  );
 }

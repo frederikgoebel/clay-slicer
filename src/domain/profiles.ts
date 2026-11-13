@@ -29,6 +29,8 @@ export interface PrinterProfile extends ProfileBase {
   primeE: number;
   startDwell: number;
   tankCm3: number;
+  /** mm the nozzle rises on travel moves so it clears the beads already printed; 0 = off */
+  zHop: number;
   startGcode: string;
   endGcode: string;
 }
@@ -51,6 +53,10 @@ export interface ClayProfile extends ProfileBase {
   waterPct: number;
   shrinkagePct: number;
   overhangMax: number;
+  /** mm of clay pulled back (E axis) before a travel move and pushed forward again after it; 0 = off */
+  retractDistance: number;
+  /** mm/s */
+  retractSpeed: number;
 }
 
 export interface ProfileMap {
@@ -77,6 +83,7 @@ const PRINTER_BASE = {
   eDia: 4.5,
   primeE: 0,
   startDwell: 0,
+  zHop: 5,
   startGcode: START_GCODE,
   endGcode: END_GCODE,
 };
@@ -139,6 +146,8 @@ export const BUILTIN_PROFILES: ProfileLists = {
       waterPct: 20,
       shrinkagePct: 12,
       overhangMax: 40,
+      retractDistance: 3,
+      retractSpeed: 20,
     }),
   ],
 };
@@ -177,7 +186,6 @@ export function resolveSliceSettings(
     waterPct: clay.waterPct,
     overhangMax: clay.overhangMax,
     mode: print.mode,
-    segLen: print.segLen,
     seamAngle: print.seamAngle,
     topFinish: print.topFinish,
     topCurves: print.topCurves,
@@ -187,9 +195,9 @@ export function resolveSliceSettings(
     infillPattern: print.infillPattern,
     infillAngle: print.infillAngle,
     solidTop: print.solidTop,
-    retractDistance: print.retractDistance,
-    retractSpeed: print.retractSpeed,
-    zHop: print.zHop,
+    retractDistance: clay.retractDistance,
+    retractSpeed: clay.retractSpeed,
+    zHop: printer.zHop,
     floorLayers: print.floorLayers,
     floorSpacingPct: print.floorSpacingPct,
     floorBelow: print.floorBelow,
@@ -199,6 +207,7 @@ export function resolveSliceSettings(
     floorPattern: print.floorPattern,
     floorAngle: print.floorAngle,
     textureFadeIn: print.textureFadeIn,
+    segLen: print.segLen,
     textures,
   };
 }

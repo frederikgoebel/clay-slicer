@@ -33,6 +33,8 @@ export function ShapeEditor() {
   const setSym = useUiStore((s) => s.setSym);
   const showHandles = useUiStore((s) => s.showHandles);
   const setShowHandles = useUiStore((s) => s.setShowHandles);
+  const handlesInPreview = useUiStore((s) => s.handlesInPreview);
+  const setHandlesInPreview = useUiStore((s) => s.setHandlesInPreview);
   const [applyAll, setApplyAll] = useState(false);
   if (!shape) return null;
 
@@ -154,6 +156,11 @@ export function ShapeEditor() {
           ))}
       </div>
       <Toggle label="Show handles in 3D view" checked={showHandles} onChange={setShowHandles} />
+      <Toggle
+        label="Also in Layers and Print preview"
+        checked={handlesInPreview}
+        onChange={setHandlesInPreview}
+      />
 
       <div className={styles.group}>Section P{sel + 1}: top view</div>
       <TopView />
@@ -182,6 +189,7 @@ export function ShapeEditor() {
             max={80}
             step={1}
             unit="mm"
+            hint="Rounds the corners of this section's outline by this radius, in mm."
             onChange={(corner) =>
               applyAll ? setSections(secs.map((s) => ({ ...s, corner }))) : patch(sel, { corner })
             }
@@ -201,6 +209,7 @@ export function ShapeEditor() {
           max={300}
           step={1}
           unit="mm"
+          hint="Radius of this circular section, in mm."
           onChange={(r) => patch(sel, { circle: { ...cur.circle!, r } })}
         />
       )}
@@ -224,6 +233,7 @@ export function ShapeEditor() {
         max={360}
         step={5}
         unit="°"
+        hint="Turns the sections progressively around the vertical axis, so the shape twists from bottom to top. Degrees over the whole height."
         onChange={(twist) => update({ ...shape, twist })}
       />
       <div className={styles.rowBtns}>

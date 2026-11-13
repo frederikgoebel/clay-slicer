@@ -2,7 +2,7 @@ import { useId, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import styles from './controls.module.css';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'default' | 'primary';
+  variant?: 'default' | 'primary' | 'danger';
   small?: boolean;
 };
 
@@ -10,6 +10,7 @@ export function Button({ variant = 'default', small, className, ...rest }: Butto
   const cls = [
     styles.btn,
     variant === 'primary' && styles.primary,
+    variant === 'danger' && styles.danger,
     small && styles.small,
     className,
   ]
@@ -109,11 +110,14 @@ export function Segmented<T extends string>({
   options,
   onChange,
   label,
+  disabled,
 }: {
   value: T;
   options: readonly (readonly [T, string])[];
   onChange: (v: T) => void;
   label: string;
+  /** options that cannot be picked right now */
+  disabled?: (v: T) => boolean;
 }) {
   return (
     <div className={styles.seg} role="group" aria-label={label}>
@@ -122,6 +126,7 @@ export function Segmented<T extends string>({
           key={v}
           type="button"
           aria-pressed={v === value}
+          disabled={disabled?.(v)}
           className={v === value ? styles.on : undefined}
           onClick={() => onChange(v)}
         >

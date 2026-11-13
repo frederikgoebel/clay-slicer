@@ -28,6 +28,8 @@ interface UiState {
   shapeSection: number;
   shapeVertex: number;
   showHandles: boolean;
+  /** keep the shape handles visible in the Layers / Print preview views while designing */
+  handlesInPreview: boolean;
   paint: PaintState;
   /** texture cards that are folded up (by texture id) */
   collapsedTex: Record<string, boolean>;
@@ -44,6 +46,7 @@ interface UiState {
   setShapeVertex: (i: number) => void;
 
   setShowHandles: (v: boolean) => void;
+  setHandlesInPreview: (v: boolean) => void;
   setTexCollapsed: (id: string, collapsed: boolean) => void;
   /** Start/stop painting a texture. Painting needs the model visible. */
   setPaintTexture: (id: string | null) => void;
@@ -60,6 +63,7 @@ export const useUiStore = create<UiState>()((set) => ({
   shapeSection: 0,
   shapeVertex: 0,
   showHandles: true,
+  handlesInPreview: true,
   paint: { textureId: null, erase: false, radius: 12, hardness: 55, opacity: 100 },
   collapsedTex: {},
   symX: false,
@@ -73,6 +77,7 @@ export const useUiStore = create<UiState>()((set) => ({
   setShapeSection: (shapeSection) => set({ shapeSection, shapeVertex: 0 }),
   setShapeVertex: (shapeVertex) => set({ shapeVertex }),
   setShowHandles: (showHandles) => set({ showHandles }),
+  setHandlesInPreview: (handlesInPreview) => set({ handlesInPreview }),
   setTexCollapsed: (id, collapsed) =>
     set((s) => ({ collapsedTex: { ...s.collapsedTex, [id]: collapsed } })),
   setPaintTexture: (textureId) =>

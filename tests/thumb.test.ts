@@ -16,7 +16,7 @@ const opts = {
 
 describe('texture thumbnails', () => {
   const mesh = cylinder(20, 40);
-  const set = buildRings(mesh, testSettings({ layerHeight: 1, floorLayers: 0, segLen: 3 }));
+  const set = buildRings(mesh, testSettings({ layerHeight: 1, floorLayers: 0 }));
   const pixels = (type: Parameters<typeof newTexture>[0]) =>
     renderTextureThumb(set, { ...newTexture(type), enabled: true }, opts);
   const covered = (a: Uint8ClampedArray) => a.filter((_, i) => i % 4 === 3 && a[i] > 0).length;

@@ -168,3 +168,13 @@
 .measure strong {
   color: var(--text);
 }
+.pick:hover {
+  color: var(--accent-2);
+}
+.x:hover:not(:disabled) {
+  color: var(--bad);
+}
+.plus:hover {
+  background: var(--accent);
+  color: #1a0f0a;
+}

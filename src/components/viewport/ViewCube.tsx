@@ -256,6 +256,7 @@ export function ViewCube() {
                 key={f.name}
                 type="button"
                 className={styles.cubeFace}
+                data-nohover
                 style={{
                   width: SIZE,
                   height: SIZE,

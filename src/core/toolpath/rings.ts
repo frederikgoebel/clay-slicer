@@ -2,6 +2,7 @@ import { centroid, findSeam, normals, resample, signedArea } from '../geometry/c
 import { meshHeight } from '../geometry/mesh';
 import { sliceLayersFlagged, type FlaggedLoop } from '../geometry/slice';
 import type { SliceSettings } from '../types';
+import { pointsFor, sampleStep } from './sampling';
 
 /** One layer's outer contour, resampled to N points starting at the seam. */
 export interface Ring {
@@ -96,6 +97,7 @@ export function buildRings(pos: Float32Array, s: SliceSettings): RingSet {
     );
 
   let pMax = 0;
+  let pMin = Infinity;
   for (const { xy: o } of outers) {
     const n = o.length / 2;
     let p = 0;
@@ -104,8 +106,9 @@ export function buildRings(pos: Float32Array, s: SliceSettings): RingSet {
       p += Math.hypot(o[2 * j] - o[2 * i], o[2 * j + 1] - o[2 * i + 1]);
     }
     pMax = Math.max(pMax, p);
+    pMin = Math.min(pMin, p);
   }
-  const N = Math.min(4000, Math.max(32, Math.ceil(pMax / s.segLen)));
+  const N = pointsFor(pMax, sampleStep(s, pMin));
   const seamRad = (s.seamAngle * Math.PI) / 180;
   const rings = outers.map(({ xy: o, cap }): Ring => {
     const [cx, cy] = centroid(o);

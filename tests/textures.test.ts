@@ -10,8 +10,7 @@ const ctx = (o: Partial<TexCtx> = {}): TexCtx => ({
   z: 30,
   H: 60,
   t: 0.25,
-  idx: 5,
-  spacing: 1.5,
+  arc: 7.5,
   zStart: 0,
   fadeIn: 0,
   lh: 2,
@@ -164,5 +163,47 @@ describe('ledge, sling and blob lift', () => {
   it('lifts the nozzle while a blob is made', () => {
     expect(blobLift([tex('blobs', { lift: 2.5 }), tex('wave')])).toBe(2.5);
     expect(blobLift([tex('blobs')])).toBe(0);
+  });
+});
+
+describe('outdents are judged as a whole', () => {
+  it('scales every point of one outdent by the same amount (mask and height fade)', async () => {
+    const { DEFAULT_PATTERN } = await import('../src/core/textures/noise');
+    const base = tex('ledge', {
+      amplitude: 4,
+      count: 5,
+      from: 0,
+      to: 100,
+      wavelength: 20,
+      rotStep: 0,
+    });
+    const faded = {
+      ...base,
+      solidFrom: 40,
+      solid: 60,
+      maskPattern: { ...DEFAULT_PATTERN, scale: 6, softness: 60 },
+    };
+    const H = 60;
+    let checked = 0;
+    const seen = new Set<number>();
+    for (const cell of [0, 1, 2, 3, 4]) {
+      for (const layer of [0, 1, 2]) {
+        const ratios: number[] = [];
+        for (let a = 0; a < 20; a++) {
+          const u = (cell + 0.05 + 0.9 * (a / 19)) / 5;
+          const z = layer * 20 + 1 + (18 * ((a * 7) % 20)) / 19;
+          const c = ctx({ u, t: u, z, H, v: z / H, ang: (u - 0.5) * 2 * Math.PI, rad: 20 });
+          const plain = radialOffset([base], c);
+          if (plain < 0.3) continue;
+          ratios.push(radialOffset([faded], c) / plain);
+        }
+        if (ratios.length < 3) continue;
+        checked++;
+        seen.add(Math.round(ratios[0] * 20));
+        expect(Math.max(...ratios) - Math.min(...ratios)).toBeLessThan(1e-6);
+      }
+    }
+    expect(checked).toBeGreaterThan(5);
+    expect(seen.size).toBeGreaterThan(2); // different outdents do get different strengths
   });
 });

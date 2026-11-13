@@ -23,9 +23,21 @@
   gap: 10px;
 }
 .actions {
+  flex: none;
   display: flex;
-  gap: 8px;
+  gap: 28px; /* the G-code button stands apart from undo / redo / history */
   align-items: center;
+}
+.lbl {
+  margin-right: 0.35em;
+}
+.actionGroup {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.brand {
+  flex: none;
 }
 .fileBtn {
   background: var(--panel-2);
@@ -58,6 +70,7 @@
   border-right: 1px solid var(--line);
 }
 .main {
+  container: viewport / inline-size;
   position: relative;
   flex: 1;
   min-width: 0;
@@ -198,12 +211,22 @@
   margin: -4px 0 6px;
   color: var(--dim);
 }
-.welcomeBtn {
-  display: grid;
+.welcomeBtn.welcomeBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 2px;
   padding: 12px;
   text-align: center;
   cursor: pointer;
+}
+.welcomeBtn:hover {
+  border-color: var(--accent);
+}
+.welcomeBtn strong,
+.welcomeBtn small {
+  display: block;
 }
 .welcomeBtn small {
   color: var(--dim);
@@ -255,37 +278,36 @@
   font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 860px) {
-  .layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: 55vh 1fr;
-  }
-  .main {
-    order: -1;
-  }
-  .sidebar {
-    border-right: none;
-    border-top: 1px solid var(--line);
-  }
+/* The viewport column is a size container, so this follows the space the docks leave, not the window. */
+@container viewport (max-width: 700px) {
   .viewbar {
-    max-width: calc(100% - 24px);
     right: 12px;
+    max-width: calc(100% - 24px);
+    gap: 6px 12px;
   }
   .card {
-    position: static;
-    width: auto;
-    max-height: none;
-    border-radius: 0;
+    top: 64px;
+    right: 12px;
+    width: min(300px, calc(100% - 24px));
+    max-height: 42%;
   }
+  .layerLabel {
+    min-width: 0;
+    font-size: 11px;
+  }
+}
+@container viewport (max-width: 460px) {
+  .card {
+    left: 12px;
+    width: auto;
+  }
+}
+@media (max-width: 860px) {
   .top {
     padding: 0 10px;
   }
   .actions {
     gap: 5px;
-  }
-  .layerLabel {
-    min-width: 0;
-    font-size: 11px;
   }
 }
 
@@ -350,4 +372,31 @@
   color: var(--dim);
   font-size: 11.5px;
   white-space: nowrap;
+}
+
+/* narrow windows (about half a laptop screen): icons and short labels, nothing wraps */
+@media (max-width: 1100px) {
+  .lbl {
+    display: none;
+  }
+  .actions {
+    gap: 14px;
+  }
+}
+@media (max-width: 860px) {
+  .brandText {
+    display: none;
+  }
+  .top {
+    gap: 4px;
+  }
+}
+
+.pauseDot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #4fd8ff;
+  margin-right: 2px;
 }

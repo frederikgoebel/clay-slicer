@@ -48,6 +48,7 @@ export function LayerBar() {
       <input
         type="range"
         aria-label="Layer"
+        title="Show the print up to this layer. Drag to see how it was built up; all the way right shows everything."
         min={0}
         max={max}
         step={0.05}

@@ -8,7 +8,8 @@ export interface SliderProps {
   max: number;
   step: number;
   unit?: string;
-  hint?: string;
+  /** what the setting does: shown as a tooltip over the whole row (required for every slider) */
+  hint: string;
   onChange: (value: number) => void;
 }
 

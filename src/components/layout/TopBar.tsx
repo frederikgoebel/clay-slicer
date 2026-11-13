@@ -1,6 +1,6 @@
 import { downloadGcode } from '../../actions/downloadGcode';
 import { useState } from 'react';
-import { commitProjectName, downloadAll } from '../../actions/projectManager';
+import { commitProjectName } from '../../actions/projectManager';
 import { useProjectStore } from '../../store/projectStore';
 import { useSaveStatusText } from './SaveStatus';
 import { redo, undo, useHistoryStore } from '../../store/historyStore';
@@ -22,7 +22,7 @@ export function TopBar() {
     <header className={styles.top}>
       <div className={styles.brand}>
         <Logo />
-        Clay Slicer
+        <span className={styles.brandText}>Clay Slicer</span>
       </div>
       <div className={styles.projectTitle}>
         <input
@@ -41,26 +41,33 @@ export function TopBar() {
         <small className={styles.saveText}>{saveText}</small>
       </div>
       <div className={styles.actions}>
-        <Button disabled={!canUndo} onClick={undo} title="Undo (Ctrl/Cmd+Z)" aria-label="Undo">
-          ↶ Undo
-        </Button>
+        <div className={styles.actionGroup}>
+          <Button disabled={!canUndo} onClick={undo} title="Undo (Ctrl/Cmd+Z)" aria-label="Undo">
+            ↶
+          </Button>
+          <Button
+            disabled={!canRedo}
+            onClick={redo}
+            title="Redo (Shift+Ctrl/Cmd+Z)"
+            aria-label="Redo"
+          >
+            ↷
+          </Button>
+          <Button
+            onClick={() => setShowHistory(true)}
+            title="Every step, each one can be switched off"
+          >
+            History
+          </Button>
+        </div>
         <Button
-          disabled={!canRedo}
-          onClick={redo}
-          title="Redo (Shift+Ctrl/Cmd+Z)"
-          aria-label="Redo"
+          variant="primary"
+          disabled={!ready}
+          onClick={() => void downloadGcode()}
+          title="Download the G-code for the printer"
+          aria-label="Download G-code"
         >
-          Redo ↷
-        </Button>
-        <Button onClick={() => setShowHistory(true)}>History</Button>
-        <Button
-          onClick={downloadAll}
-          title="One zip with the project file, the G-code (once sliced) and the STL"
-        >
-          Download zip
-        </Button>
-        <Button variant="primary" disabled={!ready} onClick={downloadGcode}>
-          Download G-code
+          <span className={styles.lbl}>Download</span>G-code
         </Button>
       </div>
       {showHistory && <HistoryDialog onClose={() => setShowHistory(false)} />}

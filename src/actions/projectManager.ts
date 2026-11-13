@@ -1,5 +1,4 @@
-import { writeStl } from '../core/io/stl';
-import { buildBundle, bundleProjects, splitProjects } from '../domain/bundle';
+import { bundleProjects, splitProjects } from '../domain/bundle';
 import { readProject, writeProject, type ProjectData } from '../domain/project';
 import {
   defaultBackend,
@@ -22,7 +21,6 @@ import { useModelStore } from '../store/modelStore';
 import { UNTITLED, useProjectStore } from '../store/projectStore';
 import { activeProfile, useSettingsStore } from '../store/settingsStore';
 import { useUiStore } from '../store/uiStore';
-import { makeGcode } from './downloadGcode';
 import { safeName, saveBlob } from './files';
 
 let backend: ProjectBackend | null = null;
@@ -242,9 +240,12 @@ const flush = () =>
     ? saveNow()
     : Promise.resolve();
 
-/** A new empty project. The old one is saved first; printer, nozzle, clay and print settings carry over. */
-export async function newProject(): Promise<void> {
-  await flush();
+/** Replace what is open by an empty project (nothing is saved here). */
+function startEmptyProject(): void {
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
   loading = true;
   try {
     useProjectStore.getState().begin(
@@ -264,6 +265,12 @@ export async function newProject(): Promise<void> {
     loading = false;
   }
   remember(useProjectStore.getState().id);
+}
+
+/** A new empty project. The old one is saved first; printer, nozzle, clay and print settings carry over. */
+export async function newProject(): Promise<void> {
+  await flush();
+  startEmptyProject();
 }
 
 /** Open a project kept in this browser. The open one is saved first. */
@@ -310,10 +317,19 @@ export async function openProjectFile(file: File): Promise<void> {
 }
 
 export async function deleteStoredProject(id: string): Promise<void> {
+  const open = useProjectStore.getState().id === id;
+  if (open) {
+    // the open project is gone: drop pending saves and go back to the empty start screen,
+    // otherwise the next save (or switching projects) would write it back
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    await queue;
+  }
   await lib().remove(id);
+  if (open) startEmptyProject();
   await refreshLibrary();
-  // deleting the open project leaves it open but unsaved: it comes back with the next change
-  if (useProjectStore.getState().id === id) useProjectStore.getState().setStatus('dirty');
 }
 
 export async function downloadStoredProject(id: string): Promise<void> {
@@ -348,20 +364,6 @@ export function downloadProject(): void {
     `${safeName(name)}.clayproject.zip`,
     'application/zip',
   );
-}
-
-/** Project file, G-code (when sliced) and STL in one zip. */
-export function downloadAll(): void {
-  const raw = useModelStore.getState().raw;
-  const gcode = makeGcode();
-  const stem = safeName(useProjectStore.getState().name);
-  const bytes = buildBundle({
-    stem,
-    project: writeProject(collectProject()),
-    gcode,
-    stl: raw ? new Uint8Array(writeStl(raw)) : null,
-  });
-  saveBlob(bytes as Uint8Array<ArrayBuffer>, `${stem}-all.zip`, 'application/zip');
 }
 
 /** Every project kept in this browser as one zip. */

@@ -29,6 +29,7 @@ export function ModelPanel() {
             max={180}
             step={1}
             unit="°"
+            hint="Turns the model around the X axis before printing, in degrees."
             onChange={(rotX) => setPrint({ rotX })}
           />
           <Slider
@@ -38,6 +39,7 @@ export function ModelPanel() {
             max={180}
             step={1}
             unit="°"
+            hint="Turns the model around the Y axis before printing, in degrees."
             onChange={(rotY) => setPrint({ rotY })}
           />
           <Slider
@@ -47,6 +49,7 @@ export function ModelPanel() {
             max={180}
             step={1}
             unit="°"
+            hint="Turns the model around the vertical axis, in degrees. Changes where the start (seam) of each layer sits relative to the model."
             onChange={(rotZ) => setPrint({ rotZ })}
           />
         </>

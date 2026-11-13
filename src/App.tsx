@@ -1,8 +1,10 @@
+import { useTexturesPanelVisible } from './store/layoutStore';
 import { useEffect, useMemo } from 'react';
 import { openFile } from './actions/projectActions';
 import { restoreLastProject, startAutosave } from './actions/projectManager';
 import styles from './components/layout/layout.module.css';
 import { LayerBar } from './components/layout/LayerBar';
+import { ConfirmDialog } from './components/layout/ConfirmDialog';
 import { ProjectProfilesDialog } from './components/layout/ProjectProfilesDialog';
 import { UnitsDialog } from './components/layout/UnitsDialog';
 import { Welcome } from './components/layout/Welcome';
@@ -32,6 +34,11 @@ export default function App() {
   const busy = useSliceStore((s) => s.status === 'busy');
   const unitsPending = useUnitsStore((s) => s.pending !== null);
   const paintId = useUiStore((s) => s.paint.textureId);
+  const texturesVisible = useTexturesPanelVisible();
+  // painting belongs to the Textures panel: leave it when another panel takes its place
+  useEffect(() => {
+    if (!texturesVisible) useUiStore.getState().setPaintTexture(null);
+  }, [texturesVisible]);
 
   const meshRadius = useMemo(() => {
     let r = 0;
@@ -103,6 +110,7 @@ export default function App() {
           {!mesh && !unitsPending && <Welcome />}
           <UnitsDialog />
           <ProjectProfilesDialog />
+          <ConfirmDialog />
           <LayerBar />
         </main>
         <Dock side="right" />

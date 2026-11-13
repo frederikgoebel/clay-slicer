@@ -15,7 +15,7 @@ export interface FloatRect {
 
 export const PANEL_ORDER: PanelId[] = ['project', 'profiles', 'model', 'textures'];
 export const PANEL_TITLES: Record<PanelId, string> = {
-  project: 'Project',
+  project: 'Projects',
   profiles: 'Print Setup',
   model: 'STL or Design',
   textures: 'Textures',
@@ -150,5 +150,13 @@ export function useModelPanelVisible(): boolean {
   return useLayoutStore((s) => {
     const p = s.place.model;
     return p === 'float' ? true : s.active[p] === 'model';
+  });
+}
+
+/** True while the Textures panel can be seen (active dock tab or floating window). */
+export function useTexturesPanelVisible(): boolean {
+  return useLayoutStore((s) => {
+    const p = s.place.textures;
+    return p === 'float' ? true : s.active[p] === 'textures';
   });
 }

@@ -34,6 +34,8 @@ export function centroid(p: Float64Array): [number, number] {
   return [cx / (3 * a), cy / (3 * a)];
 }
 
+const SEAM_EPS = 1e-9;
+
 /** Point where a ray from (cx,cy) at `ang` radians leaves the loop (outermost hit). */
 export function findSeam(
   p: Float64Array,
@@ -57,10 +59,11 @@ export function findSeam(
     const wy = p[2 * i + 1] - cy;
     const s = (wx * ey - wy * ex) / denom;
     const u = (wx * dy - wy * dx) / denom;
-    if (u >= 0 && u < 1 && s > 0 && s > bestS) {
+    // a small tolerance: a ray that goes exactly through a vertex must not slip between the two edges
+    if (u >= -SEAM_EPS && u < 1 + SEAM_EPS && s > 0 && s > bestS + 1e-9) {
       bestS = s;
       best = i;
-      bestU = u;
+      bestU = Math.min(1 - 1e-12, Math.max(0, u));
     }
   }
   if (best >= 0) return { i: best, u: bestU };
@@ -76,6 +79,9 @@ export function findSeam(
   }
   return { i: bi, u: 0 };
 }
+
+/** A vertex that turns the outline by more than this (about 25 degrees) counts as a sharp corner. */
+const CORNER_COS = Math.cos((25 * Math.PI) / 180);
 
 /** Resample to N points uniformly by arc length, starting at the seam point. */
 export function resample(
@@ -118,6 +124,30 @@ export function resample(
     out[2 * k + 1] = py[seg - 1] + t * (py[seg] - py[seg - 1]);
     // polyline segment `seg` lies on original segment i (first and last piece) or i + seg - 1
     if (flags) flag[k] = flags[seg === 1 || seg === n + 1 ? i : (i + seg - 1) % n];
+  }
+  // Keep sharp corners: a uniform sampling cuts them off (by up to half a step), so the sample
+  // nearest to each corner vertex is moved onto it. The point count stays the same.
+  // Sharp corners: the sample nearest to a corner moves onto it. Only real polygon corners count
+  // (both edges at least half a step long, so the noise of a dense outline is left alone) and
+  // each sample is used once and never moves past its neighbours, so a snap cannot fold the path.
+  const step = perimeter / N;
+  let last = -1;
+  for (let k = 1; k < m - 1; k++) {
+    const ax = px[k] - px[k - 1];
+    const ay = py[k] - py[k - 1];
+    const bx = px[k + 1] - px[k];
+    const by = py[k + 1] - py[k];
+    const la = Math.hypot(ax, ay);
+    const lb = Math.hypot(bx, by);
+    if (la < 0.5 * step || lb < 0.5 * step) continue;
+    const cos = (ax * bx + ay * by) / (la * lb);
+    if (cos > CORNER_COS) continue;
+    const q = Math.round((cum[k] / perimeter) * N);
+    if (q <= last || q >= N) continue;
+    last = q;
+    out[2 * q] = px[k];
+    out[2 * q + 1] = py[k];
+    if (flags) flag[q] = flags[(i + k) % n];
   }
   return { xy: out, perimeter, flag };
 }

@@ -21,6 +21,7 @@ import { infillSegments, linkInside, type Pt } from './infill';
 import { nominalWidth } from './bead';
 import { overhangAngle, SegmentGrid, type Poly } from './overhang';
 import type { PathBuilder } from './PathBuilder';
+import { pointsFor, sampleStep } from './sampling';
 import { floorBelowLayers, floorInsideLayers, type RingSet } from './rings';
 import { arcRuns, outsideRoute, pushTravel, TRAVEL_CLEAR } from './travel';
 
@@ -59,7 +60,7 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
   const joinDist = 2.5 * nominalWidth(s);
   const seamRad = (s.seamAngle * Math.PI) / 180;
   const open = s.topCurves === 'open';
-  let idx = 0;
+  let arc = 0;
   // printed wall lines of the layer below (outer and inner walls apart) and of this layer
   let below: { outer: SegmentGrid; inner: SegmentGrid } | null = null;
   let rec: { outer: Poly[]; inner: Poly[] } = { outer: [], inner: [] };
@@ -86,7 +87,7 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
         const q = (i + 1) % m;
         per += Math.hypot(loop.xy[2 * q] - loop.xy[2 * i], loop.xy[2 * q + 1] - loop.xy[2 * i + 1]);
       }
-      const n = Math.min(4000, Math.max(8, Math.ceil(per / s.segLen)));
+      const n = pointsFor(per, sampleStep(s, per));
       const r = resample(loop.xy, findSeam(loop.xy, cx, cy, seamRad), n, loop.cap);
       out.push({
         xy: r.xy,
@@ -125,8 +126,7 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
       z: zr,
       H,
       t: k / c.n,
-      idx,
-      spacing: c.perimeter / c.n,
+      arc,
       zStart,
       fadeIn: s.textureFadeIn,
       lh: h,
@@ -146,7 +146,7 @@ export function addNormalWall(path: PathBuilder, set: RingSet, s: SliceSettings)
       x = c.cx + dx * Math.cos(tw) - dy * Math.sin(tw);
       y = c.cy + dx * Math.sin(tw) + dy * Math.cos(tw);
     }
-    idx++;
+    arc += c.perimeter / c.n;
     if (travel) {
       pushTravel(path, s, x, y, z, route);
       record(c, kk, x, y, true);
